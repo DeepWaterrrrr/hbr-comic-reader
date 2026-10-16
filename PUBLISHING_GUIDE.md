@@ -51,7 +51,7 @@ git remote add origin https://github.com/<your-account>/<your-repo>.git
 git push -u origin main
 
 # 3) 仓库 Settings → Pages → Source 选 "GitHub Actions"
-#    推送后 Actions 会自动：构建站点 → 自检（16 项）→ 部署
+#    推送后 Actions 会自动：构建站点 → 自检（14 项）→ 部署
 ```
 
 工作流文件：`.github/workflows/deploy-public-reader.yml`。
