@@ -35,6 +35,7 @@ v010 变化（Brief v010）：
 
 from __future__ import annotations
 
+import argparse
 import datetime
 import html
 import json
@@ -53,7 +54,7 @@ MEDIA_SRC = PUBLIC / "media" / "comics"         # build_media.py 导出的公开
 SITE_TITLE = "炽焰天穹 HBR 四格漫画 · 公开阅读站"
 SITE_DESC = "《炽焰天穹》(Heaven Burns Red) 官方四格漫画公开阅读站，" \
             "收录 213 话完整图片，每话附来源与署名。"
-REPO_HINT = "https://github.com/ChengyangYan/hbr-comic-reader"
+REPO_HINT = "https://github.com/DeepWaterrrrr/hbr-comic-reader"
 
 # ── 每个 item 的公开再分发授权状态 ─────────────────────────────────────────
 # 来源：public-reader/data/rights_manifest.json + media_manifest.json。
@@ -770,7 +771,8 @@ def main() -> None:
         final_dir = SITE
 
     n_html = len(list(final_dir.rglob("*.html")))
-    total_kb = sum(p.stat().st_size for p in final_dir.rglob("*") if p.is_file()) / 1024
+    total_kb = sum(p.stat().st_size for p in final_dir.rglob("*")
+                   if p.is_file() and ".git" not in p.parts) / 1024
     n_img = len(list(final_dir.glob("assets/comics/*.*"))) + \
         len(list(final_dir.glob("assets/comics/thumbs/*.jpg")))
     n_readable = sum(1 for c in comics if c.get("image"))
