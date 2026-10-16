@@ -46,7 +46,7 @@ public-reader/
 │  └─ thumbs/<item_id>.jpg   213 张缩略图（宽 480）
 ├─ scripts/
 │  ├─ build_site.py          目录数据 + media → 静态站点（CI 用）
-│  └─ validate_site.py       上线前自检（14 项验收，CI 用）
+│  └─ validate_site.py       上线前自检（16 项验收，CI 用）
 └─ site/                     ← 构建产物，即 GitHub Pages 发布目录（不入库，CI 重建）
    ├─ assets/{css,js,img}/   自制样式、交互、中性占位图
    ├─ assets/comics/         公开图片副本（构建时从 media/ 复制）
@@ -60,7 +60,7 @@ public-reader/
 > `data/*.json` 与 `media/` 由项目侧工具链生成（依赖内部 manifest 与归档图片，
 > 不属于公开内容），因此 `build_catalog.py` / `build_media.py` **不随本仓库发布**；
 > 新增漫画的完整流程在项目侧执行后，把更新后的 `data/` 与 `media/` 提交进来即可，
-> CI 会自动重建站点并跑 14 项自检。
+> CI 会自动重建站点并跑 16 项自检。
 
 ## 本地构建与预览
 
