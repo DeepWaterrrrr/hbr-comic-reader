@@ -373,7 +373,8 @@ def check_08() -> None:
     if not SITE.is_dir():
         die("site/ 不存在，请先运行 scripts/build_site.py")
 
-    files = sorted(p for p in SITE.rglob("*") if p.is_file())
+    files = sorted(p for p in SITE.rglob("*")
+                   if p.is_file() and ".git" not in p.parts)
 
     # 8a 敏感文件名
     for p in files:
@@ -512,7 +513,7 @@ def check_10(comics, series) -> None:
         m = re.search(r"约 \*\*([\d.]+) MB\*\*", readme)
         if m:
             actual_mb = sum(p.stat().st_size for p in SITE.rglob("*")
-                            if p.is_file()) / 1024 / 1024
+                            if p.is_file() and ".git" not in p.parts) / 1024 / 1024
             if not (0.3 * float(m.group(1)) <= actual_mb <= 3 * float(m.group(1))):
                 problems.append(f"README 站点体积 {m.group(1)} MB 与实测 "
                                 f"{actual_mb:.2f} MB 不符")
@@ -695,7 +696,8 @@ def check_14(skip_rebuild: bool, node: str | None) -> None:
 
     def snapshot(root: Path) -> dict[str, str]:
         return {str(p.relative_to(root)): sha(p)
-                for p in sorted(root.rglob("*")) if p.is_file()}
+                for p in sorted(root.rglob("*"))
+                if p.is_file() and ".git" not in p.parts}
 
     before = snapshot(SITE)
     # 用 --out 构建到临时目录再比对：不删除/覆盖 site/（site/ 是当前发布候选，

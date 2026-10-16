@@ -28,3 +28,7 @@ desktop.ini
 __pycache__/
 *.pyc
 node_modules/
+
+# ── 项目侧工具链（依赖内部 manifest 与归档，不公开）────────────────────────
+scripts/build_catalog.py
+scripts/build_media.py
