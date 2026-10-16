@@ -1,0 +1,82 @@
+{
+ "schema": "hbr-public-reader-rights/1",
+ "generated_for": "HBR_STAGE_EXECUTION_BRIEF_v010",
+ "disclaimer": "本文件记录发布授权状态。状态取值：`user_declared`（用户已明确声明授权，但本项目未持有书面许可材料，如实标注，不虚称 written_license_verified）/ `approved`（有可核实证据）/ `not_verified`（无证据，默认值）/ `excluded`（明确排除）。`user_declared` 与 `approved` 均视为授权范围内可发布。",
+ "authorization_declaration": {
+  "declared_by": "项目收藏者（用户）",
+  "declared_in": "HBR_STAGE_EXECUTION_BRIEF_v010 §1 / §3.4",
+  "scope": "《炽焰天穹》HBR 漫画的公开发布；并明确民间汉化版本（CM_0111）也可以公开分享，目标是让所有 HBR 玩家能直接在线阅读完整图片",
+  "form": "对话与 Stage Brief 中的明确声明；无书面许可材料",
+  "status": "user_declared",
+  "limits": [
+   "本项目未取得、也未伪造任何权利人书面许可；授权声明来自用户本人。",
+   "若发现与用户声明冲突的具体权利限制，将记录证据并升级策略层，不静默更改（Brief v010 §3.4）。"
+  ]
+ },
+ "modes": {
+  "public-index": {
+   "enabled": true,
+   "description": "公开目录 + 官方原帖链接 + 自制中性占位图。不打包、不热链任何漫画图像。"
+  },
+  "licensed-reader": {
+   "enabled": true,
+   "description": "授权范围内（user_declared / approved）的条目直接显示站内完整图片与缩略图，图片下方附来源与署名；无权条目不生成公开媒体，仅给官方链接。"
+  }
+ },
+ "categories": [
+  {
+   "category": "official_comic",
+   "description": "《炽焰天穹》(Heaven Burns Red) 官方四格漫画，权利人为 WFS / Key / 官方运营账号",
+   "count": 212,
+   "license_source": "用户授权声明（Brief v010 §1 / §3.4）",
+   "evidence": "用户在 Stage Brief v010 中明确声明「已经取得 HBR 漫画公开发布授权，希望所有 HBR 玩家能够直接在线阅读完整图片」；无书面许可材料，如实记 user_declared",
+   "usage_scope": [
+    "repo_hosting",
+    "online_display",
+    "thumbnail"
+   ],
+   "status": "user_declared"
+  },
+  {
+   "category": "unofficial_translation",
+   "description": "民间汉化组译制的同话完整竖版（CM_0111）",
+   "count": 1,
+   "license_source": "用户授权声明（Brief v010 §1：民间汉化版本也可以公开分享）",
+   "evidence": "Brief v010 §1 明确「民间汉化版本也可以公开分享……CM_0111 纳入本轮在线完整图片发布范围」；无书面许可材料，如实记 user_declared",
+   "usage_scope": [
+    "repo_hosting",
+    "online_display",
+    "thumbnail"
+   ],
+   "status": "user_declared",
+   "items": [
+    "CM_0111"
+   ],
+   "note": "CM_0111 页面必须明示民间汉化来源、汉化组署名与官方失效链接，并保留 official_source=false 标记，不得冒充官方。"
+  },
+  {
+   "category": "official_cover",
+   "description": "归档封面图（cover）",
+   "count": 1,
+   "license_source": null,
+   "evidence": null,
+   "usage_scope": [],
+   "status": "not_verified",
+   "note": "用户授权声明未明确覆盖封面图；不生成公开媒体。"
+  },
+  {
+   "category": "self_made_asset",
+   "description": "本站自制的中性占位图、样式与脚本（无第三方内容）",
+   "count": null,
+   "license_source": "本项目自制",
+   "evidence": "public-reader/site-assets/ 下全部文件由本项目生成",
+   "usage_scope": [
+    "repo_hosting",
+    "online_display"
+   ],
+   "status": "approved"
+  }
+ ],
+ "series_count": 6,
+ "total_items": 213
+}

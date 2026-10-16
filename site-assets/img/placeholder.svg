@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="占位图">
+  <!-- 本站自制的中性占位图：不含任何第三方漫画内容 -->
+  <rect x="8" y="8" width="104" height="104" rx="10" fill="#f0f1f3"
+        stroke="#d6d9de" stroke-width="2" stroke-dasharray="6 5"/>
+  <rect x="30" y="30" width="60" height="46" rx="5" fill="#ffffff"
+        stroke="#c3c7cd" stroke-width="2"/>
+  <path d="M40 62 L52 48 L62 58 L72 42 L84 62 Z" fill="#d9dce1"/>
+  <circle cx="48" cy="42" r="5" fill="#d9dce1"/>
+  <line x1="30" y1="86" x2="90" y2="86" stroke="#c3c7cd" stroke-width="3" stroke-linecap="round"/>
+  <line x1="42" y1="94" x2="78" y2="94" stroke="#d6d9de" stroke-width="3" stroke-linecap="round"/>
+</svg>

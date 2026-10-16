@@ -1,0 +1,60 @@
+name: Deploy public reader to GitHub Pages
+
+# 触发条件：main 分支推送或手动触发。
+# 本仓库以 public-reader/ 为仓库根（独立公开仓库）。
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:   # 允许手动触发
+
+# GitHub Pages 部署所需权限（最小权限原则）
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一时间只允许一个部署，新的推送会取消排队中的旧部署
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # 1) 生成静态站点（数据 data/*.json 与媒体 media/ 已随仓库提交；
+      #    build_catalog / build_media 依赖项目内部 manifest 与归档，不在 CI 运行）
+      - name: Build site
+        run: python scripts/build_site.py
+
+      # 2) 上线前自检：版权/隐私/链接/署名/媒体一致性，任一失败即中止部署。
+      #    CI 模式下 manifest 不存在，#01/#12 自动降级为 SKIPPED 并注明。
+      - name: Validate site
+        run: python scripts/validate_site.py
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

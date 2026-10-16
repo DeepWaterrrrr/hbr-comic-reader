@@ -1,0 +1,30 @@
+# ── 凭证与隐私（绝不允许进入公开仓库）──────────────────────────────────────
+.env
+.env.*
+*.pem
+*.key
+*cookie*
+*credentials*
+*secret*
+*token*
+
+# ── 本地构建产物（可由 scripts/ 重新生成）──────────────────────────────────
+# site/ 是构建产物：GitHub Actions 会重新生成，不需要提交。
+site/
+
+# ── 项目内部资料（v010 Phase D 审计判定不得公开）──────────────────────────
+# 以下路径仅在把 public-reader/ 作为项目子目录推送时才有意义；
+# 以 public-reader/ 为独立仓库根时它们不在仓库内。
+../HBR仓库梳理_20260928/
+../bili_hbr_comics/
+../*.txt
+*.tmp
+.build_tmp/
+
+# ── 系统垃圾 ────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+__pycache__/
+*.pyc
+node_modules/

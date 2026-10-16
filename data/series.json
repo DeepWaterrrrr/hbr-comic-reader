@@ -1,0 +1,78 @@
+[
+ {
+  "slug": "第31A部队成员介绍",
+  "name": "第31A部队成员介绍",
+  "count": 6,
+  "first_date": "2025-07-20",
+  "last_date": "2025-07-20",
+  "order_basis": "rule_based",
+  "item_ids": [
+   "CM_0001",
+   "CM_0003",
+   "CM_0002",
+   "CM_0005",
+   "CM_0006",
+   "CM_0004"
+  ]
+ },
+ {
+  "slug": "夏目祈的烦恼",
+  "name": "夏目祈的烦恼",
+  "count": 2,
+  "first_date": "2025-08-15",
+  "last_date": "2025-08-16",
+  "order_basis": "explicit",
+  "item_ids": [
+   "CM_0015",
+   "CM_0016"
+  ]
+ },
+ {
+  "slug": "发明家樋口",
+  "name": "发明家樋口",
+  "count": 2,
+  "first_date": "2025-11-08",
+  "last_date": "2025-11-09",
+  "order_basis": "rule_based",
+  "item_ids": [
+   "CM_0041",
+   "CM_0042"
+  ]
+ },
+ {
+  "slug": "鞠躬尽瘁",
+  "name": "鞠躬尽瘁",
+  "count": 2,
+  "first_date": "2025-12-14",
+  "last_date": "2026-07-04",
+  "order_basis": "rule_based",
+  "item_ids": [
+   "CM_0050",
+   "CM_0116"
+  ]
+ },
+ {
+  "slug": "关于我某日迷路后被称作勇者还拯救了世界这档事",
+  "name": "关于我某日迷路后被称作勇者还拯救了世界这档事",
+  "count": 2,
+  "first_date": "2025-12-20",
+  "last_date": "2025-12-21",
+  "order_basis": "rule_based",
+  "item_ids": [
+   "CM_0051",
+   "CM_0052"
+  ]
+ },
+ {
+  "slug": "极限加点的六感",
+  "name": "极限加点的六感",
+  "count": 2,
+  "first_date": "2026-05-09",
+  "last_date": "2026-05-10",
+  "order_basis": "rule_based",
+  "item_ids": [
+   "CM_0101",
+   "CM_0102"
+  ]
+ }
+]
