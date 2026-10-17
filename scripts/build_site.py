@@ -1,36 +1,42 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""v010 build_site.py — 由 data/*.json + media/ 生成可发布的静态站点（site/）。
+"""v011 build_site.py — 由 data/*.json + media/ 生成可发布的静态站点（site/）。
+
+v011 变化（Brief v011「漫画阅读站视觉重构」）：
+
+- **首页即全量漫画缩略图墙**（SD-11.1）：打开首页直接看到全部漫画的真实缩略图，
+  按 `gallery_order`（SD-11.2 系列优先归组 + 组内时间顺序）排列；
+  删除大 Hero、统计卡、CTA 按钮排、首页系列入口卡片、最新收录区、收录范围大表；
+- **`browse.html` 改为重定向页**（SD-11.1）：meta refresh + 可见链接，旧分享链接
+  不 404，直接到达新版首页的完整浏览体验；
+- **删除独立 `rights.html`**（SD-11.1）：不再生成该页，全站导航/页脚/404 引用清零；
+  授权声明浓缩为页脚一段（ Brief 允许「放简洁页脚」），单话页署名区不变；
+- **缩略图不裁切**（SD-11.3）：`object-fit: contain`，保留四格完整画面；
+  首屏前 EAGER_CARDS 张 eager 加载，其余 lazy；宽高属性防 CLS；
+- **系列连续**（SD-11.2）：同系列在网格中连续排列，卡片带轻量标签
+  「系列名 · k/n」，组首一张上方有低调分组小行（非巨型标题板块）；
+- 标题左对齐、降字重（SD-11.4）：CSS 层实现（style.css v011）；
+- 阅读页不退化（SD-11.5）：完整图 + 图下「来源与署名」区 + 上一话/下一话全保留；
+  `reading_index`（单话页导航序号）不变，不重编号漫画条目。
 
 生成：
-    site/index.html                 首页
-    site/browse.html                浏览（排序 / 系列筛选 / 分页，客户端渲染）
+    site/index.html                 首页（全量缩略图墙，静态预渲染）
+    site/browse.html                旧入口重定向到首页
     site/search.html                搜索（客户端）
     site/series.html                系列列表
     site/series/<slug>/index.html   系列详情（6 页，静态预渲染）
     site/comic/<id>/index.html      单话页（213 页，静态预渲染）
-    site/rights.html                版权与授权说明
     site/404.html
     site/data/*.json                紧凑版目录数据（构建时从 data/ 复制）
     site/assets/comics/<id>.<ext>   完整阅读图（由 build_media.py 导出后复制）
     site/assets/comics/thumbs/<id>.jpg  缩略图
     site/.nojekyll
 
-v010 变化（Brief v010）：
-- **licensed-reader 默认启用**：授权范围内（rights_manifest 为 user_declared /
-  approved，且 build_media.py 已导出媒体）的单话页直接渲染完整图片；
-  未授权条目仍走自制占位图 + 官方原帖链接分支；
-- **每话图片下方新增「来源与署名」区**（Brief §3A）：作品/原作、官方发布账号、
-  可点击来源链接（动态/专栏 + 日期 + 失效标记）、漫画作者（仅有证据时填写）、
-  翻译/汉化署名（适用时）、版本说明；
-- 列表卡片加载缩略图（惰性加载）；
-- `built` 改为构建当天动态生成，不再写死。
-
 设计口径：
 - **全部相对路径**，GitHub Pages 任意子路径可用；
-- 单话页 / 系列页静态预渲染 → 固定 URL + SEO + 无 JS 也可读核心信息；
-- 浏览 / 搜索客户端渲染 → 213 条轻量 JSON，避免 200+ 页重复构建；
-- 所有来源文字与 HTML 属性一律经 esc() 转义（Brief §3A 验收 6）。
+- 首页/单话页/系列页静态预渲染 → 固定 URL + 无 JS 也可读核心内容；
+- 搜索客户端渲染 → 213 条轻量 JSON，避免重复构建；
+- 所有来源文字与 HTML 属性一律经 esc() 转义。
 """
 
 from __future__ import annotations
@@ -51,10 +57,13 @@ SITE = PUBLIC / "site"
 ASSETS_SRC = PUBLIC / "site-assets"             # 自制素材源码（不进构建产物目录）
 MEDIA_SRC = PUBLIC / "media" / "comics"         # build_media.py 导出的公开媒体
 
-SITE_TITLE = "炽焰天穹 HBR 四格漫画 · 公开阅读站"
-SITE_DESC = "《炽焰天穹》(Heaven Burns Red) 官方四格漫画公开阅读站，" \
-            "收录 213 话完整图片，每话附来源与署名。"
+SITE_TITLE = "炽焰天穹 · 四格漫画"
+SITE_DESC = "《炽焰天穹》(Heaven Burns Red) 官方四格漫画阅读站，" \
+            "全部话数完整图片，每话附来源与署名。"
 REPO_HINT = "https://github.com/DeepWaterrrrr/hbr-comic-reader"
+
+# v011：首页缩略图墙前 N 张 eager 加载（首屏），其余 lazy（SD-11.3）
+EAGER_CARDS = 10
 
 # ── 每个 item 的公开再分发授权状态 ─────────────────────────────────────────
 # 来源：public-reader/data/rights_manifest.json + media_manifest.json。
@@ -100,24 +109,19 @@ def rights_index() -> dict[str, dict]:
 # ══════════════════════════════════════════════════════════════════════════
 
 NAV = [
-    ("index.html", "首页"),
-    ("browse.html", "浏览全部"),
-    ("search.html", "搜索"),
+    ("index.html", "漫画"),
     ("series.html", "系列"),
-    ("rights.html", "版权与授权"),
+    ("search.html", "搜索"),
 ]
 
 FOOTER = """<footer class="site-footer">
   <div class="wrap">
-    <p><strong>{title}</strong></p>
     <p>《炽焰天穹》(Heaven Burns Red) 官方四格漫画原作权利归 WFS / Key 及官方运营方所有。
-       本站经收藏者授权声明（Brief v010，user_declared）公开完整图片，
-       每一话图片下方均标注来源与署名；若您认为内容不当，请通过仓库 Issues 联系。</p>
+       本站为非官方爱好者整理站，图片经收藏者授权声明公开（状态 user_declared，
+       无书面许可材料，不虚称已核验）；每一话图片下方均标注来源与署名。
+       若您认为内容不当，请通过<a href="{repo}/issues">仓库 Issues</a> 联系，将立即处理。</p>
     <p>数据由项目 manifest 自动生成，最后构建：{built}。
        站点无跟踪器、无 Cookie、无第三方请求。</p>
-    <p><a href="{repo}">项目仓库</a> ·
-       <a href="{prefix}rights.html">版权与授权说明</a> ·
-       <a href="https://www.bilibili.com">哔哩哔哩</a></p>
   </div>
 </footer>"""
 
@@ -145,15 +149,15 @@ def page(title: str, prefix: str, body: str, current: str = "",
 <body>
 <header class="site-header">
   <div class="wrap">
-    <a class="brand" href="{prefix}index.html">炽焰天穹 HBR<small>官方四格漫画 · 公开阅读站</small></a>
+    <a class="brand" href="{prefix}index.html">炽焰天穹 <small>四格漫画</small></a>
     <nav class="nav" aria-label="主导航">{nav}</nav>
   </div>
 </header>
 <main class="wrap">
 {body}
 </main>
-{FOOTER.replace("{title}", esc(SITE_TITLE)).replace("{built}", esc(built))
-        .replace("{repo}", REPO_HINT).replace("{prefix}", prefix)}
+{FOOTER.replace("{built}", esc(built))
+        .replace("{repo}", REPO_HINT)}
 <script src="{prefix}assets/js/app.js" defer></script>
 </body>
 </html>
@@ -334,28 +338,32 @@ def pager_block(c: dict, by_id: dict, prefix: str) -> str:
             + "</nav>")
 
 
-def card_html(c: dict, prefix: str) -> str:
-    badges = []
-    if c["series"]:
-        badges.append(f'<span class="badge badge-series">{esc(c["series"])}</span>')
-    badges.append('<span class="badge badge-official">官方</span>'
-                  if c["canonical_official"] else
-                  '<span class="badge badge-unofficial">民间汉化</span>')
-    if any(s["status"] == "deleted" for s in c["sources"]):
-        badges.append('<span class="badge badge-deleted">官方原帖已删除</span>')
-    thumb = ""
-    if c.get("thumb"):
-        thumb = (f'<span class="card-thumb"><img src="{prefix}'
-                 f'assets/comics/thumbs/{esc(Path(c["thumb"]).name)}" '
-                 f'alt="" loading="lazy" decoding="async" '
-                 f'width="{c.get("thumb_width") or 0}" '
-                 f'height="{c.get("thumb_height") or 0}"></span>')
+def card_html(c: dict, prefix: str, series_pos: tuple[int, int] | None = None,
+              eager: bool = False) -> str:
+    """漫画卡片（v011 SD-11.3：真实缩略图、contain 不裁切、轻标签）。
+
+    series_pos = (k, n)：该话在系列内的序号与系列话数（轻量标签用）；
+    eager：首屏卡片（前 EAGER_CARDS 张）立即加载，其余惰性。
+    """
+    thumb_src = f"{prefix}assets/comics/thumbs/{esc(Path(c['thumb']).name)}"
+    loading = "eager" if eager else "lazy"
+    fetch = ' fetchpriority="high"' if eager else ""
+    alt = f"《{c['title']}》（{c['date']}）漫画缩略图"
+    img = (f'<img src="{thumb_src}" alt="{esc(alt)}" '
+           f'width="{c.get("thumb_width") or 480}" '
+           f'height="{c.get("thumb_height") or 673}" '
+           f'loading="{loading}" decoding="async"{fetch}>')
+    meta = []
+    if series_pos:
+        k, n = series_pos
+        meta.append(f'<span class="cseries">{esc(c["series"])} · {k}/{n}</span>')
+    if not c["canonical_official"]:
+        meta.append('<span class="cflag">民间汉化</span>')
+    meta.append(f'<span class="cdate">{esc(c["date"])}</span>')
     return (f'<a class="card" href="{prefix}comic/{esc(c["item_id"])}/">'
-            + thumb
-            + f'<span class="cid">#{c["reading_index"]} · {esc(c["item_id"])}</span>'
+            f'<span class="card-thumb">{img}</span>'
             f'<span class="ct">{esc(c["title"])}</span>'
-            f'<span class="cm">{esc(c["date"])}</span>'
-            f'<span class="badge">' + " ".join(badges) + "</span></a>")
+            + "".join(meta) + "</a>")
 
 
 def fmt_date(d: str) -> str:
@@ -370,119 +378,69 @@ def fmt_date(d: str) -> str:
 # ══════════════════════════════════════════════════════════════════════════
 
 def build_index(comics, series, rights, built) -> str:
-    latest = sorted(comics, key=lambda c: c["reading_index"], reverse=True)[:8]
-    n_official = sum(1 for c in comics if c["canonical_official"])
-    n_unofficial = len(comics) - n_official
-    first, last = comics[0]["date"], comics[-1]["date"]
-    deleted = [c for c in comics if any(s["status"] == "deleted" for s in c["sources"])]
+    """首页 = 全量漫画缩略图墙（v011 SD-11.1/11.2/11.3）。
 
-    series_cards = "".join(
-        f'<a class="card" href="./series/{esc(s["slug"])}/">'
-        f'<span class="cid">{s["count"]} 话 · {esc(s["first_date"])} → {esc(s["last_date"])}</span>'
-        f'<span class="ct">{esc(s["name"])}</span>'
-        f'<span class="cm">按官方证据确定的顺序排列</span></a>'
-        for s in series)
+    排序用 gallery_order（系列优先归组 + 组内时间顺序）；同系列连续排列，
+    组首一张上方有低调分组小行；无 Hero / 统计卡 / CTA / 系列入口 / 最新收录。
+    """
+    ordered = sorted(comics, key=lambda c: c["gallery_order"])
+    series_total = {}
+    for c in comics:
+        if c["series"]:
+            series_total[c["series"]] = series_total.get(c["series"], 0) + 1
 
-    body = f"""<section class="hero">
-  <h1>《炽焰天穹》官方四格漫画<br>公开阅读站</h1>
-  <p class="lead">本站收录《炽焰天穹》(Heaven Burns Red) 官方四格漫画
-     <strong>{len(comics)} 话</strong>完整图片，按「系列优先、时间其次」整理阅读顺序，
-     每一话图片下方均附来源与署名。原作权利归 WFS / Key 及官方运营方所有，
-     本站经收藏者授权声明公开分享，详见
-     <a href="./rights.html">版权与授权</a>。</p>
-</section>
+    cards: list[str] = []
+    prev_series = None
+    series_seen: dict[str, int] = {}
+    for i, c in enumerate(ordered):
+        name = c["series"]
+        if name and name != prev_series:
+            # 组首：低调分组小行（左对齐、小字号、低对比；不是巨型标题板块）
+            cards.append(f'<div class="group-lead">{esc(name)}'
+                         f'<span class="gl-dim"> · {series_total[name]} 话</span></div>')
+        if name:
+            series_seen[name] = series_seen.get(name, 0) + 1
+            pos = (series_seen[name], series_total[name])
+        else:
+            pos = None
+        cards.append(card_html(c, "./", series_pos=pos, eager=i < EAGER_CARDS))
+        prev_series = name
 
-<div class="notice info">
-  <strong>关于本站的授权状态</strong>
-  本站公开完整图片的依据是<strong>收藏者的授权声明</strong>（Brief v010，
-  状态记为 <code>user_declared</code>——本项目未持有书面许可材料，不虚称已核验）。
-  所有标题、日期、来源链接均取自官方公开发布内容；每一话都标注官方动态 / 专栏
-  链接与已核实的署名信息。如权利方认为内容不当，请通过仓库 Issues 联系，将立即处理。
+    body = f"""<div class="gallery-head">
+  <h1>全部 {len(comics)} 话</h1>
+  <p class="gh-count">按系列与发布时间排列 · <a href="./search.html">搜索</a></p>
 </div>
-
-<div class="stats">
-  <div class="stat"><b>{len(comics)}</b><span>收录话数（可站内阅读）</span></div>
-  <div class="stat"><b>{len(series)}</b><span>系列 / {len(comics) - sum(s["count"] for s in series)} 独立篇</span></div>
-  <div class="stat"><b>{n_official}</b><span>官方来源</span></div>
-  <div class="stat"><b>{n_unofficial}</b><span>民间汉化（已标注）</span></div>
-</div>
-
-<div class="cta-row">
-  <a class="btn btn-primary" href="./browse.html">浏览全部 {len(comics)} 话</a>
-  <a class="btn" href="./search.html">搜索标题 / 日期</a>
-  <a class="btn" href="./series.html">按系列阅读</a>
-</div>
-
-<section class="section">
-  <h2>系列（按官方证据确定的顺序）</h2>
-  <div class="grid">{series_cards}</div>
-</section>
-
-<section class="section">
-  <h2>最新收录</h2>
-  <div class="grid">{"".join(card_html(c, "./") for c in latest)}</div>
-  <p><a href="./browse.html">查看全部 →</a></p>
-</section>
-
-<section class="section">
-  <h2>收录范围与数据说明</h2>
-  <div class="table-scroll"><table class="data">
-    <tr><th>项目</th><th>说明</th></tr>
-    <tr><td>时间范围</td><td>{esc(first)} → {esc(last)}（官方发布时间）</td></tr>
-    <tr><td>阅读顺序</td><td>系列内按官方合辑/连载体例确定的顺序；独立篇与跨系列按发布时间推进</td></tr>
-    <tr><td>标题来源</td><td>全部 {len(comics)} 话均为官方正式篇名，不编造、不猜测</td></tr>
-    <tr><td>图像状态</td><td>{n_official} 话官方完整版 + {n_unofficial} 话民间汉化（已明确标注）</td></tr>
-    <tr><td>官方原帖已删除</td><td>{len(deleted)} 话（{"、".join(esc(c["item_id"]) for c in deleted) or "无"}）</td></tr>
-    <tr><td>署名</td><td>每话图片下方标注来源与署名；官方文本无署名的显示「未标注/待核实」，不猜作者</td></tr>
-    <tr><td>数据生成</td><td>由项目 manifest 自动导出，可重跑构建；不手写目录</td></tr>
-  </table></div>
-</section>"""
+<div class="grid gallery-grid">
+{"".join(cards)}
+</div>"""
     return page(SITE_TITLE, "./", body, current="index.html", built=built)
 
 
 def build_browse(built) -> str:
+    """旧「浏览全部」入口（SD-11.1）：重定向到新版首页的完整浏览体验。
+
+    保留 HTML 页（不 404）：meta refresh 即时跳转 + JS 兜底 + 可见说明链接，
+    兼容已被分享出去的旧链接与旧书签。
+    """
     body = """<section class="hero">
   <h1>浏览全部漫画</h1>
-  <p class="lead">可按发布时间或阅读顺序排列，并按系列筛选。</p>
-</section>
-
-<div class="toolbar">
-  <div class="field">
-    <label for="f-sort">排序</label>
-    <select id="f-sort">
-      <option value="new">最新发布</option>
-      <option value="old">最早发布</option>
-      <option value="reading">阅读顺序（系列优先）</option>
-    </select>
-  </div>
-  <div class="field">
-    <label for="f-series">系列</label>
-    <select id="f-series"><option value="">加载中…</option></select>
-  </div>
-  <div class="field">
-    <label for="f-q">关键词（可选）</label>
-    <input id="f-q" type="search" placeholder="标题 / 日期 / 系列" autocomplete="off">
-  </div>
-  <span class="spacer"></span>
-  <span class="result-count" id="count">加载中…</span>
-</div>
-
-<div id="results"><div class="empty"><p>正在加载目录数据…</p></div></div>
-<div id="pager"></div>"""
-    return page("浏览全部 · " + SITE_TITLE, "./", body, current="browse.html", built=built)
+  <p class="lead">「浏览全部」已并入首页——全部漫画的缩略图墙现在就在首页，
+     按系列与发布时间排列。正在带你过去……</p>
+  <p><a class="btn btn-primary" href="./index.html">进入漫画缩略图墙 →</a></p>
+</section>"""
+    head = ('<meta http-equiv="refresh" content="0; url=./index.html">'
+            '<link rel="canonical" href="./index.html">'
+            "<script>location.replace('./index.html')</script>")
+    return page("浏览全部 · " + SITE_TITLE, "./", body, built=built, extra_head=head)
 
 
 def build_search(built) -> str:
     body = """<section class="hero">
   <h1>搜索</h1>
   <p class="lead">支持正式标题、发布日期（如 <code>2026-06</code>）、系列名与编号。</p>
+  <p class="gh-count">本站只收录官方正式篇名，不编造人物、剧情或标签，
+     因此按角色名搜索可能没有结果。</p>
 </section>
-
-<div class="notice info">
-  <strong>搜索范围说明</strong>
-  本站只收录官方正式篇名，<strong>不编造人物、剧情或标签</strong>，
-  因此按角色名搜索可能没有结果。
-</div>
 
 <div class="toolbar">
   <div class="field" style="flex:1 1 260px">
@@ -513,8 +471,7 @@ def build_series_page(series, comics, built) -> str:
 
 <div class="notice">
   <strong>其余 {len(comics) - sum(s["count"] for s in series)} 话为独立篇</strong>，
-  未发现官方系列体例证据，按发布时间排列，见
-  <a href="./browse.html">浏览全部</a>。
+  未发现官方系列体例证据，在<a href="./index.html">漫画缩略图墙</a>中按发布时间排列。
 </div>
 
 <div class="grid">{cards}</div>
@@ -543,19 +500,11 @@ def build_series_detail(s: dict, by_id: dict, built: str) -> str:
     }.get(s.get("order_basis"), s.get("order_basis") or "按官方证据确定")
 
     cards = "".join(
-        f'<a class="card" href="../../comic/{esc(c["item_id"])}/">'
-        + (f'<span class="card-thumb"><img src="../../'
-           f'assets/comics/thumbs/{esc(Path(c["thumb"]).name)}" alt="" '
-           f'loading="lazy" decoding="async" width="{c.get("thumb_width") or 0}" '
-           f'height="{c.get("thumb_height") or 0}"></span>'
-           if c.get("thumb") else "")
-        + f'<span class="cid">系列内第 {c["series_order"]} 话 · 全站 #{c["reading_index"]}</span>'
-        f'<span class="ct">{esc(c["title"])}</span>'
-        f'<span class="cm">{esc(c["date"])}</span></a>'
+        card_html(c, "../../", series_pos=(c["series_order"], len(members)))
         for c in members)
 
     body = f"""<nav aria-label="面包屑" class="result-count" style="padding:14px 0 0">
-  <a href="../../index.html">首页</a> ›
+  <a href="../../index.html">漫画</a> ›
   <a href="../../series.html">系列</a> › {esc(s["name"])}
 </nav>
 <section class="hero">
@@ -566,9 +515,9 @@ def build_series_detail(s: dict, by_id: dict, built: str) -> str:
 <div class="notice info"><strong>阅读顺序</strong>{esc(order_note)}。
    每一话都提供官方原帖链接。</div>
 
-<div class="grid">{cards}</div>
+<div class="grid gallery-grid">{cards}</div>
 
-<p style="margin-top:18px"><a href="../../browse.html">← 返回浏览全部</a></p>"""
+<p style="margin-top:18px"><a href="../../index.html">← 返回全部漫画</a></p>"""
     return page(f"{s['name']} · 系列 · " + SITE_TITLE, "../../", body, built=built)
 
 
@@ -589,8 +538,7 @@ def build_comic_page(c: dict, by_id: dict, rights: dict, built: str) -> str:
             f'<span>存档画质 {c["canonical_width"]}×{c["canonical_height"]}</span>')
 
     body = f"""<nav aria-label="面包屑" class="result-count" style="padding:14px 0 0">
-  <a href="../../index.html">首页</a> ›
-  <a href="../../browse.html">浏览全部</a> › {esc(c["item_id"])}
+  <a href="../../index.html">漫画</a> › {esc(c["item_id"])}
 </nav>
 
 <header class="comic-head">
@@ -605,108 +553,10 @@ def build_comic_page(c: dict, by_id: dict, rights: dict, built: str) -> str:
 {attribution_block(c)}
 {pager_block(c, by_id, "../../")}
 
-<p><a href="../../browse.html">← 返回目录</a></p>"""
+<p><a href="../../index.html">← 返回全部漫画</a></p>"""
     return page(f"{c['title']} · {SITE_TITLE}", "../../", body, built=built,
                 desc=f"《炽焰天穹》官方四格漫画「{c['title']}」（{c['date']}）"
                      f"——官方原帖链接与存档信息。")
-
-
-def build_rights(comics, series, rights, built) -> str:
-    n_unofficial = sum(1 for c in comics if not c["canonical_official"])
-    decl = rights.get("authorization_declaration") or {}
-    cat_rows = "".join(
-        f'<tr><td>{esc(cat["category"])}</td>'
-        f'<td class="num">{cat.get("count") if cat.get("count") is not None else "—"}</td>'
-        f'<td>{esc(", ".join(cat.get("usage_scope") or []) or "—")}</td>'
-        f'<td><strong>{esc(cat.get("status"))}</strong></td>'
-        f'<td>{esc(cat.get("evidence") or "（无）")}</td></tr>'
-        for cat in rights.get("categories", []))
-
-    body = f"""<section class="hero">
-  <h1>版权与授权说明</h1>
-  <p class="lead">本站公开《炽焰天穹》官方四格漫画的完整图片，
-     本页说明权利归属、授权声明范围与署名口径。</p>
-</section>
-
-<div class="notice">
-  <strong>一句话结论</strong>
-  《炽焰天穹》(Heaven Burns Red) 官方四格漫画的著作权归 WFS / Key 及官方运营方所有。
-  本站公开完整图片的依据是<strong>收藏者的授权声明</strong>（状态
-  <code>user_declared</code>）：用户已明确说明「已经取得 HBR 漫画公开发布授权，
-  希望所有 HBR 玩家能够直接在线阅读完整图片」，且<strong>民间汉化版本也可以公开分享</strong>。
-  本项目<strong>未持有书面许可材料</strong>，因此不声称已核验书面授权；
-  每一话图片下方均标注来源与署名，官方原帖已删除的也保留链接并标记状态。
-</div>
-
-<section class="section">
-  <h2>授权声明范围（Brief v010 §3.4）</h2>
-  <div class="table-scroll"><table class="data">
-    <tr><th>项目</th><th>内容</th></tr>
-    <tr><td>声明人</td><td>{esc(decl.get("declared_by"))}</td></tr>
-    <tr><td>声明出处</td><td>{esc(decl.get("declared_in"))}</td></tr>
-    <tr><td>覆盖范围</td><td>{esc(decl.get("scope"))}</td></tr>
-    <tr><td>形式</td><td>{esc(decl.get("form"))}</td></tr>
-    <tr><td>状态</td><td><strong>{esc(decl.get("status"))}</strong>（不虚称 written_license_verified）</td></tr>
-    <tr><td>边界</td><td>{"；".join(esc(x) for x in decl.get("limits") or [])}</td></tr>
-  </table></div>
-</section>
-
-<section class="section">
-  <h2>授权状态清单</h2>
-  <p class="result-count">状态取值：<code>user_declared</code>（用户明确声明授权，无书面材料）/
-     <code>approved</code>（有可核实证据）/
-     <code>not_verified</code>（无证据，默认值）/
-     <code>excluded</code>（明确排除）。<code>user_declared</code> 与
-     <code>approved</code> 均视为授权范围内可发布；无权类别不生成任何公开媒体。</p>
-  <div class="table-scroll"><table class="data">
-    <tr><th>内容类别</th><th>数量</th><th>允许用途</th><th>状态</th><th>证据</th></tr>
-    {cat_rows}
-  </table></div>
-</section>
-
-<section class="section">
-  <h2>各话来源状态</h2>
-  <div class="table-scroll"><table class="data">
-    <tr><th>类别</th><th>话数</th><th>说明</th></tr>
-    <tr><td>官方来源</td><td class="num">{len(comics) - n_unofficial}</td>
-        <td>官方账号「炽焰天穹_HBR」发布的动态 / 专栏，站内提供完整图片并附原帖链接</td></tr>
-    <tr><td>民间汉化</td><td class="num">{n_unofficial}</td>
-        <td>CM_0111：官方原帖已删除、官方完整原图不可再生，经收藏者裁定采用民间汉化组
-            译制的完整竖版；按用户授权声明在本站公开分享，页面明示汉化来源、
-            汉化组署名与 <code>official_source=false</code> 标记，不冒充官方</td></tr>
-    <tr><td>官方原帖已删除</td><td class="num">1</td>
-        <td>CM_0111 绑定的官方动态已被官方删除，专栏正文不可见；站点保留原链接并标记「原帖已删除」</td></tr>
-    <tr><td>归档封面图</td><td class="num">1</td>
-        <td>用户授权声明未明确覆盖封面图，不生成公开媒体</td></tr>
-    <tr><td>自制素材</td><td class="num">—</td>
-        <td>占位图、样式与脚本均由本项目自制，无第三方内容，可自由使用</td></tr>
-  </table></div>
-</section>
-
-<section class="section">
-  <h2>署名口径</h2>
-  <ul>
-    <li>每一话图片下方都有「来源与署名」区：作品/原作、官方发布账号、来源链接
-        （动态/专栏 + 日期 + 状态）、漫画作者、翻译/汉化、版本说明。</li>
-    <li>漫画作者/绘者<strong>仅在官方文本或汉化原帖有明确署名时填写</strong>
-        （如官方合辑动态正文「漫画：津留崎 优」）；未标注的一律显示「未标注/待核实」，
-        <strong>不猜作者</strong>。</li>
-    <li>民间汉化信息取自汉化原帖自述与发布者账号信息（cv36235931：
-        汉化工房九九组 译，发布者 StuartRiki_鍵視），不凭空扩展人员名单。</li>
-  </ul>
-</section>
-
-<section class="section">
-  <h2>免责声明</h2>
-  <ul>
-    <li>本站为<strong>非官方</strong>的爱好者整理项目，与 WFS / Key / 官方运营方无从属关系。</li>
-    <li>站内所有漫画标题、日期、来源链接均取自官方公开发布内容，未作改写。</li>
-    <li><strong>署名与免责声明不等于转载许可。</strong>
-        若权利方认为本站内容不当，请通过仓库 Issues 联系，将立即处理。</li>
-    <li>本站不跟踪访客：无 Cookie、无分析脚本、无第三方请求。</li>
-  </ul>
-</section>"""
-    return page("版权与授权 · " + SITE_TITLE, "./", body, current="rights.html", built=built)
 
 
 def build_404(built) -> str:
@@ -715,8 +565,7 @@ def build_404(built) -> str:
   <p class="lead">你访问的地址可能已变更，或该话尚未收录。</p>
 </section>
 <div class="cta-row">
-  <a class="btn btn-primary" href="./index.html">返回首页</a>
-  <a class="btn" href="./browse.html">浏览全部漫画</a>
+  <a class="btn btn-primary" href="./index.html">全部漫画</a>
   <a class="btn" href="./search.html">搜索</a>
 </div>"""
     return page("404 · " + SITE_TITLE, "./", body, built=built)
@@ -777,7 +626,8 @@ def main() -> None:
         len(list(final_dir.glob("assets/comics/thumbs/*.jpg")))
     n_readable = sum(1 for c in comics if c.get("image"))
     print(f"✅ 站点构建完成：{n_html} 个 HTML，合计 {total_kb:.0f} KB")
-    print(f"   单话页 {len(comics)} · 系列页 {len(series)} · 顶层页 6")
+    print(f"   单话页 {len(comics)} · 系列页 {len(series)} · 顶层页 5"
+          f"（首页缩略图墙 / browse 重定向 / 搜索 / 系列 / 404）")
     print(f"   数据：comics.json / series.json / rights_manifest.json / "
           f"media_manifest.json（紧凑版）")
     print(f"   媒体：{n_img} 个图片文件（全图 + 缩略图），"
@@ -806,12 +656,11 @@ def build_into(root: Path, comics, series, rights, r_index, by_id, built: str) -
 
     (root / ".nojekyll").write_text("# GitHub Pages: bypass Jekyll\n", encoding="utf-8")
 
-    # 静态页
+    # 静态页（v011：browse = 重定向页；rights 页已删除）
     (root / "index.html").write_text(build_index(comics, series, rights, built), encoding="utf-8")
     (root / "browse.html").write_text(build_browse(built), encoding="utf-8")
     (root / "search.html").write_text(build_search(built), encoding="utf-8")
     (root / "series.html").write_text(build_series_page(series, comics, built), encoding="utf-8")
-    (root / "rights.html").write_text(build_rights(comics, series, rights, built), encoding="utf-8")
     (root / "404.html").write_text(build_404(built), encoding="utf-8")
 
     # 系列详情

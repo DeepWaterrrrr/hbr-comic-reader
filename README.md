@@ -2,31 +2,31 @@
 
 《炽焰天穹》(Heaven Burns Red) 官方四格漫画的**公开阅读站**。
 收录 **213 话**（6 个系列共 16 话 + 197 独立篇），
-按「系列优先、时间其次」整理阅读顺序，**每话均可站内阅读完整图片**，
-图片下方附来源与署名。站点发布体积约 **130 MB**（225 个 HTML + 4 份 JSON +
-426 张公开图片 + 自制素材）。
+打开首页就是**全部漫画的缩略图墙**（按系列与发布时间排列），
+**每话均可站内阅读完整图片**，图片下方附来源与署名。站点发布体积约 **130 MB**
+（224 个 HTML + 4 份 JSON + 426 张公开图片 + 自制素材）。
 
 > **关于授权状态**：漫画著作权归 WFS / Key 及官方运营方所有。
 > 本站公开完整图片的依据是**收藏者的授权声明**（Brief v010，状态记为
 > `user_declared`——本项目未持有书面许可材料，不虚称已核验）。
 > 每一话图片下方均标注来源与署名；官方原帖已删除的保留链接并标记状态。
-> 详见 [`PUBLISHING_GUIDE.md`](PUBLISHING_GUIDE.md) 与站点内[版权与授权页](site/rights.html)。
+> 授权声明同时浓缩在站点页脚。详见 [`PUBLISHING_GUIDE.md`](PUBLISHING_GUIDE.md)。
 
 ## 功能
 
 | 页面 | 说明 |
 |---|---|
-| 首页 | 项目介绍、收录统计、最新收录（缩略图）、系列入口 |
-| 浏览全部 | 按最新/最早/阅读顺序排列，系列筛选，分页（每页 24，卡片含缩略图） |
+| 首页 | **全部 213 话缩略图墙**：真实缩略图（不裁切）、系列连续排列（轻标签「系列名 · k/n」）、手机 2 列 / 桌面 4–5 列、首屏 eager + 离屏 lazy |
+| 浏览全部（`browse.html`） | 旧入口，自动重定向到首页漫画墙（旧分享链接不 404） |
 | 搜索 | 按正式标题、发布日期（如 `2026-06`）、系列名、编号搜索 |
 | 系列 | 6 个系列，系列内按官方证据确定的顺序排列 |
-| 单话页 | 完整漫画图片、**来源与署名**、上一话/下一话、返回目录 |
-| 版权与授权 | 授权声明范围、授权状态清单、署名口径、免责声明 |
+| 单话页 | 完整漫画图片、**来源与署名**、上一话/下一话、返回漫画墙 |
 | 404 | 自定义未找到页 |
 
-设计口径：手机优先、中文、无跟踪器（无 Cookie / 分析脚本 / 第三方请求）、
-全部相对路径（GitHub Pages 任意子路径可用）、单话页与系列页静态预渲染（固定 URL + SEO）、
-图片惰性加载（列表缩略图 + 单话完整图）。
+设计口径（Brief v011）：安静、左对齐、漫画画廊气质；无跟踪器
+（无 Cookie / 分析脚本 / 第三方请求）；全部相对路径（GitHub Pages 任意子路径可用）；
+首页/单话页/系列页静态预渲染（固定 URL + 无 JS 也可读核心内容）；
+缩略图 `object-fit: contain` 不裁切四格；宽高属性防布局跳动。
 
 ## 目录结构
 
@@ -35,7 +35,7 @@ public-reader/
 ├─ README.md                 本文件
 ├─ PUBLISHING_GUIDE.md       发布指南（含授权边界与部署步骤）
 ├─ .gitignore
-├─ .github/workflows/        GitHub Actions 自动部署（可选）
+├─ .github/workflows/        GitHub Actions 自动部署（main 推送 → 重建 + 18 项自检 → 部署）
 ├─ data/                     ← build_catalog.py / build_media.py 产出（可读版源数据）
 │  ├─ comics.json            213 条轻量条目（公开字段白名单 + 署名 attribution）
 │  ├─ series.json            6 个系列
@@ -46,11 +46,11 @@ public-reader/
 │  └─ thumbs/<item_id>.jpg   213 张缩略图（宽 480）
 ├─ scripts/
 │  ├─ build_site.py          目录数据 + media → 静态站点（CI 用）
-│  └─ validate_site.py       上线前自检（16 项验收，CI 用）
+│  └─ validate_site.py       上线前自检（18 项验收，CI 用）
 └─ site/                     ← 构建产物，即 GitHub Pages 发布目录（不入库，CI 重建）
    ├─ assets/{css,js,img}/   自制样式、交互、中性占位图
    ├─ assets/comics/         公开图片副本（构建时从 media/ 复制）
-   ├─ index.html / browse.html / search.html / series.html / rights.html / 404.html
+   ├─ index.html / browse.html（重定向）/ search.html / series.html / 404.html
    ├─ comic/<item_id>/index.html     213 页
    ├─ series/<slug>/index.html       6 页
    └─ data/*.json            紧凑版目录数据
@@ -60,7 +60,15 @@ public-reader/
 > `data/*.json` 与 `media/` 由项目侧工具链生成（依赖内部 manifest 与归档图片，
 > 不属于公开内容），因此 `build_catalog.py` / `build_media.py` **不随本仓库发布**；
 > 新增漫画的完整流程在项目侧执行后，把更新后的 `data/` 与 `media/` 提交进来即可，
-> CI 会自动重建站点并跑 16 项自检。
+> CI 会自动重建站点并跑 18 项自检（任一 FAIL 即中止部署）。
+
+## 排序口径（Brief v011 SD-11.2）
+
+- **系列是不可拆的连续组**：同系列漫画在缩略图墙中必然相邻；
+- 组锚点 = **组内最早正式发布日期**；所有组（含独立篇）按锚点**从旧到新**；
+- 系列内部按官方系列顺序（`series_order`）排列；独立篇按自身发布日期；
+- 单话页「上一话/下一话」沿用 `reading_index`（全站阅读序号，与首页展示序
+  `gallery_order` 分开，互不影响）。
 
 ## 本地构建与预览
 
@@ -68,7 +76,7 @@ public-reader/
 # 1) 生成静态站点（数据 data/*.json 与媒体 media/ 已在仓库中）
 python scripts/build_site.py
 
-# 2) 上线前自检（版权 / 隐私 / 链接 / 署名 / 媒体一致性）
+# 2) 上线前自检（版权 / 隐私 / 链接 / 署名 / 媒体一致性 / 缩略图墙）
 python scripts/validate_site.py
 
 # 3) 本地预览

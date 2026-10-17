@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""v010 validate_site.py — 上线前自检（Brief v010 §5 验收 + §3A 署名标准）。
+"""v011 validate_site.py — 上线前自检（Brief v011 §5 验收 + 既有署名标准）。
 
 用法：
     python public-reader/scripts/validate_site.py
@@ -10,13 +10,15 @@
 退出码：全部 PASS 或明确标注的 SKIPPED → 0；任一 FAIL → 1。
 GitHub Actions 工作流依赖此退出码中止部署。
 
-v010 变化：
-- #01/#12 在 manifest 缺失时（独立仓库 CI 环境）自动降级为 SKIPPED 并说明；
-- #08 位图白名单放宽到 `assets/comics/`（授权范围内导出的公开媒体）；
-- #09 CM_0111 必须显示**真实完整图 + 汉化署名 + 官方失效链接**（不再是占位图）；
-- #11 公开图片必须与 media_manifest / comics.json 一一对应，无权条目不生成媒体；
-- 新增 #15 每话「来源与署名」完整性、#16 媒体文件与记录一致性；
-- #13 支持 --live-url 对真实部署 URL 探测。
+v011 变化：
+- #04 单话页「返回」链接由 browse.html 改为 index.html（首页即浏览入口）；
+- #05 browse.html 从「客户端列表页」改为「重定向页」：检查其必须跳转首页
+  且不得残留旧列表 DOM；app.js 不再依赖 results/count/pager/f-* 元素；
+- #06 断点由 640px 调整为 560px；新增 object-fit: contain 不裁切检查；
+- #07/#13 探测清单移除 rights.html（页面已删除），browse.html 仍须 200；
+- 新增 #17 首页全量缩略图墙（卡片数 / 缩略图落地 / 系列连续 / gallery_order）；
+- 新增 #18 旧链接兼容与 rights 清零（browse 重定向内容、全站无 rights.html
+  引用、404 无坏链、页脚授权声明在场）。
 """
 
 from __future__ import annotations
@@ -185,8 +187,9 @@ def check_04(comics) -> None:
                 continue
             if f'href="../../comic/{iid}/"' not in txt:
                 broken.append(f"{c['item_id']} 的 {cls} 链接未指向 {iid}")
-        if 'href="../../browse.html"' not in txt:
-            broken.append(f"{c['item_id']} 缺少返回目录链接")
+        # v011：首页即浏览入口，返回链接指向 index.html
+        if 'href="../../index.html"' not in txt:
+            broken.append(f"{c['item_id']} 缺少返回漫画墙链接")
         # v010：图片 src 也必须落地
         for src in re.findall(r'<img src="(\.\./\.\./assets/comics/[^"]+)"', txt):
             target = (page.parent / src).resolve()
@@ -194,9 +197,9 @@ def check_04(comics) -> None:
             if not target.exists():
                 broken.append(f"{c['item_id']} → 图片缺失 {src}")
 
-    add("04", "单话链接、上一话/下一话、返回目录正常", not broken,
+    add("04", "单话链接、上一话/下一话、返回漫画墙正常", not broken,
         f"检查 {checked} 个站内链接与图片引用 + {len(comics)} 页 prev/next + "
-        f"{len(comics)} 页返回目录"
+        f"{len(comics)} 页返回链接"
         + (f"；损坏：{broken[:8]}" if broken else "，全部有效"))
 
 
@@ -254,20 +257,41 @@ def check_05(comics, node: str | None) -> None:
     browse = read(SITE / "browse.html")
     searchp = read(SITE / "search.html")
     appjs = read(SITE / "assets/js/app.js")
-    need_browse = ["results", "count", "pager", "f-series", "f-sort", "f-q"]
+
+    # v011：browse.html 是重定向页（旧链接兼容），不得残留旧客户端列表 DOM
+    if not browse:
+        problems.append("browse.html 缺失（旧链接会 404）")
+    else:
+        for needle, label in (
+            ('http-equiv="refresh"', "meta refresh 跳转"),
+            ('url=./index.html', "跳转目标 index.html"),
+            ('rel="canonical"', "canonical 指向首页"),
+            ("location.replace", "JS 兜底跳转"),
+            ('href="./index.html"', "可见的手动入口链接"),
+        ):
+            if needle not in browse:
+                problems.append(f"browse.html 缺少{label}（{needle}）")
+        for stale in ('id="results"', 'id="pager"', 'id="f-series"',
+                      'id="f-sort"', 'id="f-q"'):
+            if stale in browse:
+                problems.append(f"browse.html 残留旧列表 DOM：{stale}")
+
     need_search = ["s-q", "s-results", "s-count"]
-    for i in need_browse:
-        if f'id="{i}"' not in browse:
-            problems.append(f"browse.html 缺少 app.js 依赖的元素 #{i}")
-        elif f'$("{i}")' not in appjs and f"$('{i}')" not in appjs:
-            problems.append(f"app.js 未引用 #{i}")
     for i in need_search:
         if f'id="{i}"' not in searchp:
             problems.append(f"search.html 缺少 app.js 依赖的元素 #{i}")
         elif f'$("{i}")' not in appjs and f"$('{i}')" not in appjs:
             problems.append(f"app.js 未引用 #{i}")
     if not problems:
-        notes.append(f"页面元素 id 与 app.js 引用一致（{len(need_browse) + len(need_search)} 个）")
+        notes.append("browse.html 为重定向页且无旧 DOM 残留；search 元素 id 与 "
+                     "app.js 引用一致（3 个）")
+
+    # v010 遗留 bug 回归防线：thumb 路径不得双重拼接
+    if "assets/comics/thumbs/\" + esc(c.thumb)" in appjs or \
+            "'./assets/comics/thumbs/' + esc(c.thumb)" in appjs:
+        problems.append("app.js 仍存在 thumb 双重拼接（v010 bug 复发）")
+    if "split(\"/\").pop()" not in appjs:
+        problems.append("app.js 未对 thumb 取 basename（v010 bug 防线缺失）")
 
     newest = max(comics, key=lambda c: c["reading_index"])
     oldest = min(comics, key=lambda c: c["reading_index"])
@@ -285,29 +309,42 @@ def check_06(comics) -> None:
     css = read(SITE / "assets/css/style.css")
     problems = []
 
-    if "@media (min-width: 640px)" not in css:
-        problems.append("缺少桌面断点")
+    if "@media (min-width: 560px)" not in css:
+        problems.append("缺少移动端网格断点（560px 起 3 列）")
+    if "@media (min-width: 1200px)" not in css:
+        problems.append("缺少桌面网格断点（1200px 起 5 列）")
     if "--tap: 44px" not in css:
         problems.append("缺少最小点击区域变量")
-    if "grid-template-columns: 1fr" not in css:
-        problems.append("缺少手机优先单列布局")
+    if "grid-template-columns: repeat(2, 1fr)" not in css:
+        problems.append("缺少手机 2 列基础网格（SD-11.3）")
     if "overflow-x: auto" not in css:
         problems.append("宽表格缺少横向滚动容器")
+    # v011 SD-11.3：缩略图不得裁切四格
+    if "object-fit: contain" not in css:
+        problems.append("缩略图未使用 object-fit: contain（会裁切漫画格）")
+    if "aspect-ratio" not in css:
+        problems.append("缩略图缺少 aspect-ratio（无 CLS 保护）")
 
+    index = read(SITE / "index.html")
     sample = SITE / "comic" / comics[0]["item_id"] / "index.html"
     txt = read(sample)
     if 'name="viewport"' not in txt or "width=device-width" not in txt:
         problems.append("缺少 viewport meta")
     if "loading=\"lazy\"" not in txt:
-        problems.append("图片未使用惰性加载")
+        problems.append("单话图未使用惰性加载")
+    if "loading=\"eager\"" not in index:
+        problems.append("首页首屏缩略图未使用 eager 加载")
+    if 'loading="lazy"' not in index:
+        problems.append("首页离屏缩略图未使用 lazy 加载")
 
     for m in re.finditer(r'style="[^"]*width:\s*\d{3,}px', txt):
         problems.append(f"发现写死宽度：{m.group(0)[:60]}")
         break
 
     add("06", "手机/桌面布局可用，资源惰性加载", not problems,
-        ("静态检查通过：viewport meta、44px 点击区域、单列→多列断点、"
-         "横向滚动容器、loading=lazy、无写死宽度。"
+        ("静态检查通过：viewport meta、44px 点击区域、2→3→4→5 列断点、"
+         "object-fit: contain 不裁切、aspect-ratio 防 CLS、首页 eager+lazy、"
+         "横向滚动容器、无写死宽度。"
          "**真机/浏览器视觉测试未自动化（SKIPPED，需人工）**"
          if not problems else "；".join(problems)))
 
@@ -333,7 +370,7 @@ def check_07(skip_network: bool, series=None) -> None:
 
     probes = [
         "/", "/index.html", "/browse.html", "/search.html",
-        "/series.html", "/rights.html", "/404.html",
+        "/series.html", "/404.html",
         "/comic/CM_0001/", "/comic/CM_0111/", "/comic/CM_0217/",
         "/series/" + urllib.parse.quote(series[0]["slug"], safe="") + "/",
         "/assets/css/style.css", "/assets/js/app.js",
@@ -658,7 +695,7 @@ def check_13(live_url: str | None, comics) -> None:
     series_slug = json.loads((DATA / "series.json").read_text(encoding="utf-8"))[0]["slug"]
     probes = [
         "", "index.html", "browse.html", "search.html", "series.html",
-        "rights.html", "404.html",
+        "404.html",
         f"series/{urllib.parse.quote(series_slug, safe='')}/",
         "assets/css/style.css", "assets/js/app.js",
         "data/comics.json", "data/media_manifest.json",
@@ -681,7 +718,7 @@ def check_13(live_url: str | None, comics) -> None:
             problems.append(f"{p or '(root)'} → HTTP {code}")
 
     add("13", "真实部署 URL 可访问性", not problems,
-        f"探测 {live_url} 共 {len(probes)} 个资源（首页/浏览/搜索/系列/版权/404/"
+        f"探测 {live_url} 共 {len(probes)} 个资源（首页/browse 重定向/搜索/系列/404/"
         f"3 个单话页/3 张完整图/缩略图/CSS/JS/2 份 JSON）"
         + (f"；失败：{problems[:6]}" if problems else "，全部 200"))
 
@@ -837,8 +874,148 @@ def check_16(comics, media) -> None:
 
 
 # ══════════════════════════════════════════════════════════════════════════
-#  主流程
+# 17. 首页即全量缩略图墙（Brief v011 SD-11.1/11.2/11.3）
 # ══════════════════════════════════════════════════════════════════════════
+def check_17(comics, series) -> None:
+    problems = []
+    index = read(SITE / "index.html")
+    if not index:
+        add("17", "首页即全量缩略图墙（Brief v011 SD-11.1/11.2/11.3）", False,
+            "index.html 缺失")
+        return
+
+    # 17a 卡片数 == 有效 item 数，且一个不少
+    n_cards = len(re.findall(r'<a class="card" href="\./comic/CM_\d+/">', index))
+    if n_cards != len(comics):
+        problems.append(f"首页卡片数 {n_cards} != 有效话数 {len(comics)}")
+
+    # 17b 每张卡片都有真实缩略图（无占位、无裂图路径、无双重拼接）
+    srcs = re.findall(r'<img src="\./assets/comics/thumbs/([^"]+)"', index)
+    if len(srcs) != len(comics):
+        problems.append(f"首页缩略图数 {len(srcs)} != 话数 {len(comics)}")
+    bad_path = [s for s in srcs if "/" in s or not s.endswith(".jpg")]
+    if bad_path:
+        problems.append(f"缩略图路径异常（疑双重拼接）：{bad_path[:3]}")
+    for s in srcs:
+        if not (SITE / "assets" / "comics" / "thumbs" / s).is_file():
+            problems.append(f"缩略图文件缺失：{s}")
+            break
+    # 只查 <img> 引用的占位图（favicon 的 placeholder.svg 是 <link>，不算）
+    if re.search(r'<img[^>]+src="[^"]*placeholder\.svg"', index):
+        problems.append("首页出现占位图（不得用占位代替真实缩略图）")
+
+    # 17c 卡片指向的单话页全部存在
+    ids = re.findall(r'<a class="card" href="\./comic/(CM_\d+)/">', index)
+    missing = [i for i in ids if not (SITE / "comic" / i / "index.html").is_file()]
+    if missing:
+        problems.append(f"卡片指向的单话页缺失：{missing[:5]}")
+    if len(set(ids)) != len(ids):
+        problems.append("首页出现重复话数卡片")
+
+    # 17d 系列连续性（gallery_order 顺序下每个系列只出现一次且连续）
+    by_id = {c["item_id"]: c for c in comics}
+    seq = [by_id[i]["series"] for i in ids]
+    for s in series:
+        idxs = [k for k, v in enumerate(seq) if v == s["name"]]
+        if not idxs:
+            problems.append(f"系列 {s['name']} 未在首页出现")
+        elif idxs != list(range(idxs[0], idxs[-1] + 1)):
+            problems.append(f"系列 {s['name']} 在首页被拆散：{idxs}")
+
+    # 17e gallery_order 合规：1..N 连续、组锚点单调不减、组内 series_order 递增
+    by_go = sorted(comics, key=lambda c: c["gallery_order"])
+    if [c["gallery_order"] for c in by_go] != list(range(1, len(comics) + 1)):
+        problems.append("gallery_order 不是 1..N 连续")
+    order_seq = [by_id[i]["gallery_order"] for i in ids]
+    if order_seq != sorted(order_seq):
+        problems.append("首页卡片顺序与 gallery_order 不一致")
+    anchors: dict[str, str] = {}
+    for c in by_go:
+        key = c["series"] or f"__s__{c['item_id']}"
+        if key not in anchors:
+            anchors[key] = c["date"] or ""
+    ak = list(anchors.values())
+    if ak != sorted(ak):
+        problems.append("系列组锚点日期非单调不减（组间排序错误）")
+    for s in series:
+        members = [by_id[i] for i in s["item_ids"]]
+        orders = [m["series_order"] for m in members]
+        if orders != sorted(orders):
+            problems.append(f"系列 {s['name']} 组内顺序与 series_order 不一致：{orders}")
+
+    # 17f 组首分组小行在场（系列连续的可视标记）
+    n_groups = len([s for s in series]) + len([c for c in comics if not c["series"]])
+    n_leads = len(re.findall(r'class="group-lead"', index))
+    expected_leads = len(series)          # 仅系列组有小行；独立篇不加（避免噪音）
+    if n_leads != expected_leads:
+        problems.append(f"分组小行数 {n_leads} != 系列数 {expected_leads}")
+
+    # 17g 首页不得再出现已删除的模板区块
+    for stale in ('class="stats"', 'class="cta-row"', '最新收录', '收录范围与数据说明',
+                  '版权与授权</a>', '浏览全部 '):
+        if stale in index:
+            problems.append(f"首页残留旧模板元素：{stale}")
+
+    add("17", "首页即全量缩略图墙（Brief v011 SD-11.1/11.2/11.3）", not problems,
+        f"卡片 {n_cards}/{len(comics)}；缩略图 {len(srcs)} 张全部落地且路径无双重拼接；"
+        f"系列 {len(series)} 个全部连续；gallery_order 1..N 连续、组锚点单调、"
+        f"组内 series_order 正确；分组小行 {n_leads}；无占位图、无旧模板残留"
+        + (f"；问题：{problems[:5]}" if problems else ""))
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# 18. 旧链接兼容与 rights 页面清零（Brief v011 SD-11.1）
+# ══════════════════════════════════════════════════════════════════════════
+def check_18() -> None:
+    problems = []
+
+    # 18a rights.html 不得再生成
+    if (SITE / "rights.html").is_file():
+        problems.append("rights.html 仍被生成（SD-11.1 要求删除）")
+
+    # 18b 全站 HTML 不得再引用 rights.html
+    refs = []
+    for p in SITE.rglob("*.html"):
+        if ".git" in p.parts:
+            continue
+        txt = read(p)
+        if "rights.html" in txt:
+            refs.append(str(p.relative_to(SITE)))
+    if refs:
+        problems.append(f"仍有页面引用 rights.html：{refs[:5]}")
+
+    # 18c 全站 HTML 不得再链向已不存在的 browse 语义（browse 重定向除外）
+    #     ——browse.html 自身是重定向页，允许出现；其他页面不应再导航到它。
+    nav_refs = []
+    for p in SITE.rglob("*.html"):
+        if ".git" in p.parts or p.name == "browse.html":
+            continue
+        txt = read(p)
+        if re.search(r'href="[^"]*browse\.html"', txt):
+            nav_refs.append(str(p.relative_to(SITE)))
+    if nav_refs:
+        problems.append(f"仍有页面导航到 browse.html：{nav_refs[:5]}")
+
+    # 18d 404 页与首页不得有坏链
+    for name in ("index.html", "404.html"):
+        txt = read(SITE / name)
+        for href in re.findall(r'href="\./([^"#]+)"', txt):
+            if href.startswith(("http://", "https://", "mailto:")):
+                continue
+            if not (SITE / href).exists():
+                problems.append(f"{name} 引用不存在的站内目标：{href}")
+
+    # 18e 页脚授权声明在场（rights 页删除后的义务承载）
+    footer_txt = read(SITE / "comic" / "CM_0001" / "index.html")
+    for needle in ("user_declared", "WFS / Key", "仓库 Issues"):
+        if needle not in footer_txt:
+            problems.append(f"页脚缺少授权/联系声明要素：{needle}")
+
+    add("18", "旧链接兼容与 rights 页面清零（Brief v011 SD-11.1）", not problems,
+        "rights.html 未生成且全站 0 引用；无页面再导航 browse.html"
+        "（browse 自身为重定向页）；index/404 无坏链；"
+        "页脚保留 user_declared 授权声明与 Issues 联系入口"
+        + (f"；问题：{problems[:5]}" if problems else ""))
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--skip-network", action="store_true",
@@ -880,6 +1057,8 @@ def main() -> None:
     check_14(args.skip_rebuild, node)
     check_15(comics)
     check_16(comics, media)
+    check_17(comics, series)
+    check_18()
 
     # ── 汇总 ──
     n_pass = sum(1 for r in RESULTS if r[2] == "PASS")
@@ -887,7 +1066,7 @@ def main() -> None:
     n_skip = sum(1 for r in RESULTS if r[2] == "SKIPPED")
 
     print("=" * 78)
-    print("HBR public-reader 上线前自检（Brief v010 §5 验收 + §3A 署名）")
+    print("HBR public-reader 上线前自检（Brief v011 §5 验收 + 既有署名标准）")
     print("=" * 78)
     for no, name, status, detail in RESULTS:
         mark = {"PASS": "✅", "FAIL": "❌", "SKIPPED": "⏭️ "}[status]
