@@ -1,9 +1,11 @@
 /* ============================================================
    HBR 四格漫画站 — 自制样式（无第三方内容，无跟踪器）
-   v011（Brief v011 SD-11.4）：安静、左对齐、漫画画廊；
+   v012（Brief v012 SD-12.1/12.2/12.3）：安静、左对齐、漫画画廊；
    源文件位于 public-reader/site-assets/css/style.css，
    由 scripts/build_site.py 复制进 site/assets/css/。
    设计关键词：漫画画廊、安静、爱好者整理、自然、耐看、真实内容优先。
+   v012 起首页/搜索卡片不再有任何系列标签结构（系列只影响排序），
+   `.group-lead`（v011 跨网格系列标题）已整体删除。
    ============================================================ */
 
 :root {
@@ -115,6 +117,31 @@ img { max-width: 100%; height: auto; display: block; }
 .hero h1 { font-size: 1.15rem; line-height: 1.4; margin: 0 0 6px; font-weight: 600; }
 .hero p.lead { color: var(--text-dim); margin: 0 0 14px; max-width: 60ch; font-size: 0.92rem; }
 
+/* ---------- 关于页正文（v012 SD-12.3：自然段落，非企业介绍页） ---------- */
+.prose { max-width: 72ch; padding: 8px 0 4px; }
+.prose h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 26px 0 8px;
+  text-align: left;
+}
+.prose h2:first-child { margin-top: 4px; }
+.prose p { margin: 0 0 12px; font-size: 0.94rem; line-height: 1.8; }
+.prose code {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 5px;
+  font-size: 0.86em;
+}
+ul.about-series { margin: 4px 0 14px; padding-left: 1.2em; }
+ul.about-series li {
+  margin: 0 0 8px;
+  font-size: 0.92rem;
+  line-height: 1.7;
+}
+ul.about-series li a { font-size: 0.86rem; }
+
 /* ---------- 首页缩略图墙（v011 SD-11.1/11.3） ---------- */
 .gallery-head {
   display: flex;
@@ -140,17 +167,9 @@ img { max-width: 100%; height: auto; display: block; }
   gap: 14px 10px;
 }
 
-/* 系列分组小行：低调、左对齐，不是标题板块 */
-.group-lead {
-  grid-column: 1 / -1;
-  font-size: 0.8rem;
-  color: var(--text-dim);
-  font-weight: 500;
-  margin: 10px 0 -4px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid var(--border);
-}
-.group-lead .gl-dim { font-weight: 400; opacity: 0.8; }
+/* v012：group-lead（v011 跨网格系列分组标题）已删除——
+   它横跨整网格且位于组首，会被读成「章节标题」，使后续独立篇看起来
+   从属于上一个系列（Brief v012 §3 SD-12.1）。系列连续性由卡片相邻性表达。 */
 
 .card {
   display: block;

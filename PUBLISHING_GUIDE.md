@@ -30,7 +30,7 @@
 | 状态项 | 值 |
 |---|---|
 | `WEBSITE_IMPLEMENTATION_STATUS` | **已完成**（全部页面 + 媒体管线 + 署名 + 自检） |
-| `PUBLIC_DEPLOYMENT_STATUS` | **Deployed / Live**（见 v010/v011 Report 真实 URL） |
+| `PUBLIC_DEPLOYMENT_STATUS` | **Deployed / Live**（见 v010/v011/v012 Report 真实 URL） |
 | `FULL_COMIC_REPUBLICATION_RIGHTS_STATUS` | **User Declared（213/213，无书面材料）** |
 | `FULL_COMIC_ONLINE_READING_STATUS` | **Enabled（213 / 213 话可站内阅读完整图）** |
 
@@ -51,7 +51,7 @@ git remote add origin https://github.com/<your-account>/<your-repo>.git
 git push -u origin main
 
 # 3) 仓库 Settings → Pages → Source 选 "GitHub Actions"
-#    推送后 Actions 会自动：构建站点 → 自检（18 项）→ 部署
+#    推送后 Actions 会自动：构建站点 → 自检（20 项）→ 部署
 ```
 
 工作流文件：`.github/workflows/deploy-public-reader.yml`。
@@ -62,7 +62,7 @@ git push -u origin main
 > manifest 与归档图片，不属于公开仓库内容。`data/*.json` 与 `media/` 作为
 > 提交内容进入仓库，CI 只做「数据 → 站点 → 自检 → 部署」。
 > manifest 缺失时 `validate_site.py` 的 #01/#12 自动降级为 SKIPPED 并注明
-> CI 模式；项目侧全量复跑见 v011 Report §10。
+> CI 模式；项目侧全量复跑见 v012 Report §10。
 
 ---
 
@@ -107,7 +107,7 @@ git push -f origin gh-pages
 - [ ] 仓库中的位图只出现在 `media/comics/`（及其构建副本 `site/assets/comics/`），
       且与 `media_manifest.json` 一一对应
 - [ ] README 的统计数字与站点一致
-- [ ] 已阅读站点页脚的授权声明（v011 起 rights.html 已删除，声明浓缩在页脚），确认表述准确
+- [ ] 已阅读站点「关于」页与页脚的授权声明（v011 起 rights.html 已删除，声明浓缩在关于页与页脚），确认表述准确
 - [ ] CM_0111 页面明示民间汉化来源、汉化组署名与 `official_source=false`
 
 ---
@@ -116,14 +116,15 @@ git push -f origin gh-pages
 
 | 限制 | 值 | 本站实际 |
 |---|---|---|
-| 站点大小 | 1 GB | 约 **130 MB**（224 HTML + 4 JSON + 426 张图片） |
+| 站点大小 | 1 GB | 约 **130 MB**（225 HTML + 4 JSON + 426 张图片） |
 | 仓库大小（软限） | 1 GB（建议 < 1 GB） | 约 **130 MB**（不含 site/ 构建副本） |
 | 月软带宽 | 100 GB | 单话完整图约 300–600 KB；列表页每页 24 张缩略图（约 40–70 KB/张）且惰性加载，余量充足 |
-| 构建时长（Actions） | 6 小时/月 | 单次约 30–60 秒（仅复制媒体 + 渲染 224 页） |
+| 构建时长（Actions） | 6 小时/月 | 单次约 30–60 秒（仅复制媒体 + 渲染 225 页） |
 
-图片加载策略（v011）：**首页即全量缩略图墙，只加载宽 480 缩略图**
+图片加载策略（v011/v012）：**首页即全量缩略图墙，只加载宽 480 缩略图**
 （首屏 10 张 eager，其余 lazy + 宽高属性防 CLS），单话页才加载完整图；
-`browse.html` 旧入口重定向到首页，不再有第二套列表 UI。
+`browse.html` 旧入口重定向到首页；`series.html`/`series/<slug>/` 为不出导航的
+兼容保留页；主导航固定为 漫画/搜索/关于 三项。
 
 ---
 

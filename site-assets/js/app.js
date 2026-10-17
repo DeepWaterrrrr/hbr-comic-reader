@@ -5,6 +5,10 @@
    依赖：data/comics.json
    模式由 rights_manifest.json 的 modes 决定；默认 public-index。
 
+   v012 变化（Brief v012）：
+   - **搜索卡片去掉系列轻标签**（SD-12.1）：与首页一致——系列只影响排序，
+     不再用任何卡片级/块级系列结构提示「归属」，避免读者把后续独立篇
+     误认作上一个系列的成员；`cflag`（民间汉化）是权利标记，保留。
    v011 变化（Brief v011）：
    - **browse 客户端渲染整体删除**：browse.html 已改为重定向到首页
      （首页即全量缩略图墙，静态预渲染），不再需要 results/pager/筛选 UI；
@@ -13,7 +17,7 @@
      './assets/comics/thumbs/' → 请求 404，browse/search 页缩略图全裂。
      现在统一取 basename 后再拼（与 Python 端 Path(...).name 口径一致）；
    - 搜索结果按 gallery_order（系列优先归组）排序，与首页一致；
-   - 卡片视觉与首页 card_html 对齐：缩略图 + 标题 + 日期 + 系列轻标签。
+   - 卡片视觉与首页 card_html 对齐：缩略图 + 标题 + 日期。
    ============================================================ */
 (function () {
   "use strict";
@@ -108,7 +112,7 @@
         '" width="' + (c.thumb_width || 480) + '" height="' + (c.thumb_height || 673) +
         '" loading="lazy" decoding="async"></span>' : "";
     var meta = [];
-    if (c.series) meta.push('<span class="cseries">' + esc(c.series) + "</span>");
+    /* v012 SD-12.1：不再输出 cseries 系列标签（系列只影响排序） */
     if (!c.canonical_official) meta.push('<span class="cflag">民间汉化</span>');
     meta.push('<span class="cdate">' + esc(c.date) + "</span>");
     return '<a class="card" href="./comic/' + esc(c.item_id) + '/">' + thumb +

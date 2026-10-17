@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""v011 validate_site.py — 上线前自检（Brief v011 §5 验收 + 既有署名标准）。
+"""v012 validate_site.py — 上线前自检（Brief v012 §5/§6 验收 + 既有标准）。
 
 用法：
     python public-reader/scripts/validate_site.py
@@ -10,15 +10,14 @@
 退出码：全部 PASS 或明确标注的 SKIPPED → 0；任一 FAIL → 1。
 GitHub Actions 工作流依赖此退出码中止部署。
 
-v011 变化：
-- #04 单话页「返回」链接由 browse.html 改为 index.html（首页即浏览入口）；
-- #05 browse.html 从「客户端列表页」改为「重定向页」：检查其必须跳转首页
-  且不得残留旧列表 DOM；app.js 不再依赖 results/count/pager/f-* 元素；
-- #06 断点由 640px 调整为 560px；新增 object-fit: contain 不裁切检查；
-- #07/#13 探测清单移除 rights.html（页面已删除），browse.html 仍须 200；
-- 新增 #17 首页全量缩略图墙（卡片数 / 缩略图落地 / 系列连续 / gallery_order）；
-- 新增 #18 旧链接兼容与 rights 清零（browse 重定向内容、全站无 rights.html
-  引用、404 无坏链、页脚授权声明在场）。
+v012 变化（Brief v012「三导航 / 关于页 / 去系列块级标题」）：
+- #17 反转 v011 的「分组小行数 == 系列数」断言：**跨网格系列标题必须为 0**
+  （全站 HTML 扫描 group-lead / gl-dim，首页重点）；名称改为「连续漫画墙」；
+- #18 增加 series 兼容页仍在（series.html + series/<slug>/ 不得删成 404）；
+- 新增 #19 主导航严格三项（漫画/搜索/关于）且全站一致、about.html 存在；
+- 新增 #20 关于页数据一致性（统计/系列清单由数据现算比对，防手写数字过期）；
+- #07/#13 探测清单增加 about.html；
+- v011 既有项（thumb 拼接回归、contain、eager/lazy、署名、媒体一致性）全部保留。
 """
 
 from __future__ import annotations
@@ -369,7 +368,7 @@ def check_07(skip_network: bool, series=None) -> None:
     base = f"http://127.0.0.1:{port}/site"
 
     probes = [
-        "/", "/index.html", "/browse.html", "/search.html",
+        "/", "/index.html", "/about.html", "/browse.html", "/search.html",
         "/series.html", "/404.html",
         "/comic/CM_0001/", "/comic/CM_0111/", "/comic/CM_0217/",
         "/series/" + urllib.parse.quote(series[0]["slug"], safe="") + "/",
@@ -694,8 +693,8 @@ def check_13(live_url: str | None, comics) -> None:
     sample_ids = ["CM_0001", "CM_0111", "CM_0217"]
     series_slug = json.loads((DATA / "series.json").read_text(encoding="utf-8"))[0]["slug"]
     probes = [
-        "", "index.html", "browse.html", "search.html", "series.html",
-        "404.html",
+        "", "index.html", "about.html", "browse.html", "search.html",
+        "series.html", "404.html",
         f"series/{urllib.parse.quote(series_slug, safe='')}/",
         "assets/css/style.css", "assets/js/app.js",
         "data/comics.json", "data/media_manifest.json",
@@ -874,13 +873,14 @@ def check_16(comics, media) -> None:
 
 
 # ══════════════════════════════════════════════════════════════════════════
-# 17. 首页即全量缩略图墙（Brief v011 SD-11.1/11.2/11.3）
+# 17. 首页是连续漫画墙：无跨网格系列标题 + 全量缩略图 + 系列连续
+#     （Brief v012 SD-12.1：v011 的 group-lead 断言反转为 0）
 # ══════════════════════════════════════════════════════════════════════════
 def check_17(comics, series) -> None:
     problems = []
     index = read(SITE / "index.html")
     if not index:
-        add("17", "首页即全量缩略图墙（Brief v011 SD-11.1/11.2/11.3）", False,
+        add("17", "首页是连续漫画墙（Brief v012 SD-12.1）", False,
             "index.html 缺失")
         return
 
@@ -943,30 +943,44 @@ def check_17(comics, series) -> None:
         if orders != sorted(orders):
             problems.append(f"系列 {s['name']} 组内顺序与 series_order 不一致：{orders}")
 
-    # 17f 组首分组小行在场（系列连续的可视标记）
-    n_groups = len([s for s in series]) + len([c for c in comics if not c["series"]])
-    n_leads = len(re.findall(r'class="group-lead"', index))
-    expected_leads = len(series)          # 仅系列组有小行；独立篇不加（避免噪音）
-    if n_leads != expected_leads:
-        problems.append(f"分组小行数 {n_leads} != 系列数 {expected_leads}")
+    # 17f ⚠️ v012 SD-12.1：跨网格系列标题必须为 0（v011 断言已反转）
+    #     group-lead 横跨整网格且位于组首，会被读成「章节标题」，使后续
+    #     独立篇看起来从属于上一个系列——Brief 要求修复误导性 HTML 结构。
+    if 'class="group-lead"' in index:
+        problems.append("首页仍存在跨网格系列分组标题（group-lead）")
+    if "gl-dim" in index:
+        problems.append("首页仍存在分组标题的计数元素（gl-dim）")
+    n_leads_site = 0
+    for p in SITE.rglob("*.html"):
+        if ".git" in p.parts:
+            continue
+        txt = read(p)
+        n_leads_site += len(re.findall(r'class="group-lead"', txt))
+    if n_leads_site:
+        problems.append(f"全站仍有 {n_leads_site} 处 group-lead（应为 0）")
 
-    # 17g 首页不得再出现已删除的模板区块
-    for stale in ('class="stats"', 'class="cta-row"', '最新收录', '收录范围与数据说明',
+    # 17g 首页卡片不得再带系列轻标签（SD-12.1 默认优先不加标签）
+    if 'class="cseries"' in index:
+        problems.append("首页卡片仍带系列标签（cseries）")
+
+    # 17h 首页不得再出现已删除的模板区块
+    for stale in ('class="stats"', '最新收录', '收录范围与数据说明',
                   '版权与授权</a>', '浏览全部 '):
         if stale in index:
             problems.append(f"首页残留旧模板元素：{stale}")
 
-    add("17", "首页即全量缩略图墙（Brief v011 SD-11.1/11.2/11.3）", not problems,
+    add("17", "首页是连续漫画墙：无跨网格系列标题 + 全量缩略图 + 系列连续",
+        not problems,
         f"卡片 {n_cards}/{len(comics)}；缩略图 {len(srcs)} 张全部落地且路径无双重拼接；"
         f"系列 {len(series)} 个全部连续；gallery_order 1..N 连续、组锚点单调、"
-        f"组内 series_order 正确；分组小行 {n_leads}；无占位图、无旧模板残留"
+        f"组内 series_order 正确；**跨网格系列标题 0**；无占位图、无旧模板残留"
         + (f"；问题：{problems[:5]}" if problems else ""))
 
 
 # ══════════════════════════════════════════════════════════════════════════
-# 18. 旧链接兼容与 rights 页面清零（Brief v011 SD-11.1）
+# 18. 旧链接兼容与 rights 清零（Brief v011 SD-11.1 + v012 SD-12.2）
 # ══════════════════════════════════════════════════════════════════════════
-def check_18() -> None:
+def check_18(series) -> None:
     problems = []
 
     # 18a rights.html 不得再生成
@@ -996,7 +1010,14 @@ def check_18() -> None:
     if nav_refs:
         problems.append(f"仍有页面导航到 browse.html：{nav_refs[:5]}")
 
-    # 18d 404 页与首页不得有坏链
+    # 18d v012 SD-12.2：旧 series 页面保留为不出导航的兼容页（不制造 404）
+    if not (SITE / "series.html").is_file():
+        problems.append("series.html 被删除（旧链接会 404，应保留为兼容页）")
+    for s in series:
+        if not (SITE / "series" / s["slug"] / "index.html").is_file():
+            problems.append(f"系列兼容页被删除：series/{s['slug']}/")
+
+    # 18e 404 页与首页不得有坏链
     for name in ("index.html", "404.html"):
         txt = read(SITE / name)
         for href in re.findall(r'href="\./([^"#]+)"', txt):
@@ -1005,17 +1026,175 @@ def check_18() -> None:
             if not (SITE / href).exists():
                 problems.append(f"{name} 引用不存在的站内目标：{href}")
 
-    # 18e 页脚授权声明在场（rights 页删除后的义务承载）
+    # 18f 页脚授权声明在场（rights 页删除后的义务承载）
     footer_txt = read(SITE / "comic" / "CM_0001" / "index.html")
     for needle in ("user_declared", "WFS / Key", "仓库 Issues"):
         if needle not in footer_txt:
             problems.append(f"页脚缺少授权/联系声明要素：{needle}")
 
-    add("18", "旧链接兼容与 rights 页面清零（Brief v011 SD-11.1）", not problems,
+    add("18", "旧链接兼容与 rights 清零（v011 SD-11.1 + v012 SD-12.2）",
+        not problems,
         "rights.html 未生成且全站 0 引用；无页面再导航 browse.html"
-        "（browse 自身为重定向页）；index/404 无坏链；"
-        "页脚保留 user_declared 授权声明与 Issues 联系入口"
+        "（browse 自身为重定向页）；series.html + 6 个系列详情页保留为兼容页"
+        "（0 个 404）；index/404 无坏链；页脚保留 user_declared 授权声明与 "
+        "Issues 联系入口"
         + (f"；问题：{problems[:5]}" if problems else ""))
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# 19. 主导航严格三项（漫画/搜索/关于）且全站一致（Brief v012 SD-12.2）
+# ══════════════════════════════════════════════════════════════════════════
+def check_19(comics, series) -> None:
+    problems = []
+    about = read(SITE / "about.html")
+    if not about:
+        add("19", "主导航严格三项（漫画/搜索/关于）且全站一致", False,
+            "about.html 缺失（SD-12.3 要求新增关于页）")
+        return
+
+    expected = {"index.html", "search.html", "about.html"}
+
+    def nav_of(txt: str) -> set[str]:
+        m = re.search(r'<nav class="nav"[^>]*>(.*?)</nav>', txt, re.S)
+        if not m:
+            return set()
+        return {Path(h).name for h in re.findall(r'href="([^"#]+)"', m.group(1))
+                if not h.startswith(("http://", "https://", "mailto:"))}
+
+    # 19a 抽样全部页面类型：顶层页 + 单话页 + 系列页 + 系列详情页
+    samples = [("index.html", SITE / "index.html"),
+               ("search.html", SITE / "search.html"),
+               ("about.html", SITE / "about.html"),
+               ("browse.html", SITE / "browse.html"),
+               ("404.html", SITE / "404.html"),
+               ("series.html", SITE / "series.html")]
+    for s in series:
+        samples.append((f"series/{s['slug']}/", SITE / "series" / s["slug"] / "index.html"))
+    for iid in ("CM_0001", "CM_0111", comics[-1]["item_id"]):
+        samples.append((f"comic/{iid}/", SITE / "comic" / iid / "index.html"))
+
+    bad_nav = []
+    for label, path in samples:
+        txt = read(path)
+        if not txt:
+            problems.append(f"{label} 页面缺失")
+            continue
+        nav = nav_of(txt)
+        if nav != expected:
+            bad_nav.append(f"{label} → {sorted(nav) or '无导航'}")
+    if bad_nav:
+        problems.append(f"导航不是严格三项（漫画/搜索/关于）：{bad_nav[:6]}")
+
+    # 19b 导航文案必须就是 漫画/搜索/关于（不得出现「系列」「版权」等第四项）
+    m = re.search(r'<nav class="nav"[^>]*>(.*?)</nav>', about, re.S)
+    nav_txt = m.group(1) if m else ""
+    for label in ("漫画", "搜索", "关于"):
+        if f">{label}</a>" not in nav_txt:
+            problems.append(f"关于页导航缺少「{label}」")
+    for stale in ("系列", "版权与授权", "浏览全部"):
+        if f">{stale}</a>" in nav_txt:
+            problems.append(f"导航残留旧入口「{stale}」")
+
+    # 19c 品牌名单独存在（不算导航项）：header 内有 brand 链接
+    if 'class="brand"' not in about:
+        problems.append("顶栏缺少品牌名（brand）")
+
+    # 19d 关于页可从导航到达（nav 内含 about.html 链接）
+    if 'href="./about.html"' not in nav_txt and 'href="../../about.html"' not in nav_txt:
+        problems.append("导航未链接到 about.html")
+
+    add("19", "主导航严格三项（漫画/搜索/关于）且全站一致", not problems,
+        f"抽样 {len(samples)} 个页面（5 顶层 + {len(series)} 系列详情 + 3 单话），"
+        f"导航全部严格等于 [漫画, 搜索, 关于]；brand 单独显示；"
+        f"about.html 已生成且导航可达"
+        + (f"；问题：{problems[:6]}" if problems else ""))
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# 20. 关于页数据一致性（Brief v012 SD-12.3：统计由数据生成，不得手写过期）
+# ══════════════════════════════════════════════════════════════════════════
+def check_20(comics, series) -> None:
+    problems = []
+    about = read(SITE / "about.html")
+    if not about:
+        add("20", "关于页数据一致性（统计与目录数据一致）", False,
+            "about.html 缺失")
+        return
+
+    # 20a 统计数字由 comics.json / series.json 现算，必须原样出现在页面上
+    n = len(comics)
+    ns = len(series)
+    n_members = sum(s["count"] for s in series)
+    n_standalone = n - n_members
+    dates = sorted(c["date"] for c in comics if c.get("date"))
+    first_d, last_d = (dates[0], dates[-1]) if dates else ("", "")
+    n_readable = sum(1 for c in comics if c.get("image"))
+    for label, needle in (
+        ("总话数", f"{n} 话"),
+        ("系列数", f"{ns} 个"),
+        ("系列内话数", f"共 {n_members} 话"),
+        ("独立篇数", f"{n_standalone} 话"),
+        ("起始日期", first_d),
+        ("结束日期", last_d),
+        ("可阅读话数", f"{n_readable} 话"),
+    ):
+        if needle not in about:
+            problems.append(f"关于页缺少{label}「{needle}」（疑手写数字或数据未更新）")
+
+    # 20b 系列清单：每个系列名称 + 话数 + 第一话链接都必须在场且链接有效
+    by_id = {c["item_id"]: c for c in comics}
+    for s in series:
+        if s["name"] not in about:
+            problems.append(f"关于页系列清单缺少「{s['name']}」")
+        if f'{s["count"]} 话' not in about:
+            problems.append(f"关于页系列清单缺少「{s['name']}」的话数 {s['count']}")
+        members = sorted((by_id[i] for i in s["item_ids"] if i in by_id),
+                         key=lambda m: m["series_order"])
+        if members:
+            link = f'comic/{members[0]["item_id"]}/'
+            if link not in about:
+                problems.append(f"系列 {s['name']} 缺少第一话链接 {link}")
+            elif not (SITE / "comic" / members[0]["item_id"] / "index.html").is_file():
+                problems.append(f"系列 {s['name']} 第一话链接指向缺失页面：{link}")
+
+    # 20c 排序规则说明必须与 gallery_order 算法一致（关键语句在场）
+    for needle in ("最早一话的发布日期", "官方顺序", "系列不被拆开"):
+        if needle not in about:
+            problems.append(f"关于页缺少排序规则关键表述：「{needle}」")
+    if "系列只影响排列顺序" not in about and "不用系列标题把网格分区" not in about:
+        problems.append("关于页未说明「系列只影响排序、不分区」（SD-12.1 口径）")
+
+    # 20d 来源与署名说明 + CM_0111 特例 + 授权口径
+    for needle in ("来源与署名", "未标注", "不猜作者", "CM_0111",
+                   "汉化工房九九组", "StuartRiki_鍵視", "official_source=false",
+                   "user_declared", "未持有书面许可材料"):
+        if needle not in about:
+            problems.append(f"关于页缺少署名/授权要素：「{needle}」")
+
+    # 20e 关于页不得出现企业介绍页式模板痕迹
+    for stale in ('class="stats"', 'class="cta-row"', "关于我们", "了解更多",
+                  "立即体验"):
+        if stale in about:
+            problems.append(f"关于页残留模板痕迹：{stale}")
+
+    # 20f 关于页站内链接不得坏链
+    for href in re.findall(r'href="\./([^"#]+)"', about):
+        if href.startswith(("http://", "https://", "mailto:")):
+            continue
+        if not (SITE / href).exists():
+            problems.append(f"关于页引用不存在的站内目标：{href}")
+
+    add("20", "关于页数据一致性（统计与目录数据一致）", not problems,
+        f"统计七项（{n} 话 / {ns} 个系列 / {n_members} 系列话 / "
+        f"{n_standalone} 独立篇 / {first_d}→{last_d} / {n_readable} 可读）"
+        f"与 comics.json、series.json 现算值一致；{ns} 个系列清单与第一话链接齐全；"
+        f"排序规则与 gallery_order 算法一致；CM_0111 特例与授权口径在场"
+        + (f"；问题：{problems[:6]}" if problems else ""))
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  主流程
+# ══════════════════════════════════════════════════════════════════════════
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--skip-network", action="store_true",
@@ -1058,7 +1237,9 @@ def main() -> None:
     check_15(comics)
     check_16(comics, media)
     check_17(comics, series)
-    check_18()
+    check_18(series)
+    check_19(comics, series)
+    check_20(comics, series)
 
     # ── 汇总 ──
     n_pass = sum(1 for r in RESULTS if r[2] == "PASS")
@@ -1066,7 +1247,7 @@ def main() -> None:
     n_skip = sum(1 for r in RESULTS if r[2] == "SKIPPED")
 
     print("=" * 78)
-    print("HBR public-reader 上线前自检（Brief v011 §5 验收 + 既有署名标准）")
+    print("HBR public-reader 上线前自检（Brief v012 §5/§6 验收 + 既有署名标准）")
     print("=" * 78)
     for no, name, status, detail in RESULTS:
         mark = {"PASS": "✅", "FAIL": "❌", "SKIPPED": "⏭️ "}[status]

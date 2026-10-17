@@ -1,30 +1,30 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""v011 build_site.py — 由 data/*.json + media/ 生成可发布的静态站点（site/）。
+"""v012 build_site.py — 由 data/*.json + media/ 生成可发布的静态站点（site/）。
 
-v011 变化（Brief v011「漫画阅读站视觉重构」）：
+v012 变化（Brief v012「三导航 / 关于页 / 去系列块级标题」）：
 
-- **首页即全量漫画缩略图墙**（SD-11.1）：打开首页直接看到全部漫画的真实缩略图，
-  按 `gallery_order`（SD-11.2 系列优先归组 + 组内时间顺序）排列；
-  删除大 Hero、统计卡、CTA 按钮排、首页系列入口卡片、最新收录区、收录范围大表；
-- **`browse.html` 改为重定向页**（SD-11.1）：meta refresh + 可见链接，旧分享链接
-  不 404，直接到达新版首页的完整浏览体验；
-- **删除独立 `rights.html`**（SD-11.1）：不再生成该页，全站导航/页脚/404 引用清零；
-  授权声明浓缩为页脚一段（ Brief 允许「放简洁页脚」），单话页署名区不变；
-- **缩略图不裁切**（SD-11.3）：`object-fit: contain`，保留四格完整画面；
-  首屏前 EAGER_CARDS 张 eager 加载，其余 lazy；宽高属性防 CLS；
-- **系列连续**（SD-11.2）：同系列在网格中连续排列，卡片带轻量标签
-  「系列名 · k/n」，组首一张上方有低调分组小行（非巨型标题板块）；
-- 标题左对齐、降字重（SD-11.4）：CSS 层实现（style.css v011）；
-- 阅读页不退化（SD-11.5）：完整图 + 图下「来源与署名」区 + 上一话/下一话全保留；
-  `reading_index`（单话页导航序号）不变，不重编号漫画条目。
+- **去掉跨网格系列分组标题**（SD-12.1）：v011 在每组首张上方插入的
+  `group-lead`（横跨整网格 + 底边线）会被读成「章节标题」，使后续独立篇
+  看起来从属于上一个系列。首页/搜索卡片不再生成该结构，也不再带
+  `cseries` 系列轻标签（默认优先不加标签，网格保持干净）；
+  系列连续性由 gallery_order 的相邻性表达，语义零变化；
+- **主导航只剩 漫画 / 搜索 / 关于**（SD-12.2）：品牌名单独显示，不算导航项；
+  新增 `about.html`（SD-12.3）；不恢复 rights.html；
+- **新增关于页 `build_about()`**：这个网站是什么 / 当前收录（统计由数据生成，
+  不手写数字）/ 首页排列规则（与 gallery_order 算法一致）/ 系列情况
+  （名称+话数+第一话轻量链接）/ 图片来源与署名；
+- **旧 series 页面保留为不出导航的兼容页**（SD-12.2）：series.html 与
+  series/<slug>/ 仍可访问（0 个 404），页首加兼容说明；
+- 阅读页 / 署名 / 上下话 / 完整图 / gallery_order 不退化（SD-12.4）。
 
 生成：
-    site/index.html                 首页（全量缩略图墙，静态预渲染）
+    site/index.html                 首页（连续缩略图墙，无系列块级标题）
+    site/about.html                 关于这个漫画库（数据自动统计）
     site/browse.html                旧入口重定向到首页
     site/search.html                搜索（客户端）
-    site/series.html                系列列表
-    site/series/<slug>/index.html   系列详情（6 页，静态预渲染）
+    site/series.html                系列列表（兼容保留，不在导航）
+    site/series/<slug>/index.html   系列详情（6 页，兼容保留，不在导航）
     site/comic/<id>/index.html      单话页（213 页，静态预渲染）
     site/404.html
     site/data/*.json                紧凑版目录数据（构建时从 data/ 复制）
@@ -34,7 +34,7 @@ v011 变化（Brief v011「漫画阅读站视觉重构」）：
 
 设计口径：
 - **全部相对路径**，GitHub Pages 任意子路径可用；
-- 首页/单话页/系列页静态预渲染 → 固定 URL + 无 JS 也可读核心内容；
+- 首页/单话页/系列页/关于页静态预渲染 → 固定 URL + 无 JS 也可读核心内容；
 - 搜索客户端渲染 → 213 条轻量 JSON，避免重复构建；
 - 所有来源文字与 HTML 属性一律经 esc() 转义。
 """
@@ -108,10 +108,11 @@ def rights_index() -> dict[str, dict]:
 #  HTML 骨架
 # ══════════════════════════════════════════════════════════════════════════
 
+# v012 SD-12.2：主导航只剩 漫画 / 搜索 / 关于 三项（品牌名单独显示，不算导航项）
 NAV = [
     ("index.html", "漫画"),
-    ("series.html", "系列"),
     ("search.html", "搜索"),
+    ("about.html", "关于"),
 ]
 
 FOOTER = """<footer class="site-footer">
@@ -121,7 +122,8 @@ FOOTER = """<footer class="site-footer">
        无书面许可材料，不虚称已核验）；每一话图片下方均标注来源与署名。
        若您认为内容不当，请通过<a href="{repo}/issues">仓库 Issues</a> 联系，将立即处理。</p>
     <p>数据由项目 manifest 自动生成，最后构建：{built}。
-       站点无跟踪器、无 Cookie、无第三方请求。</p>
+       站点无跟踪器、无 Cookie、无第三方请求。
+       <a href="{prefix}about.html">关于这个漫画库</a></p>
   </div>
 </footer>"""
 
@@ -157,7 +159,8 @@ def page(title: str, prefix: str, body: str, current: str = "",
 {body}
 </main>
 {FOOTER.replace("{built}", esc(built))
-        .replace("{repo}", REPO_HINT)}
+        .replace("{repo}", REPO_HINT)
+        .replace("{prefix}", prefix)}
 <script src="{prefix}assets/js/app.js" defer></script>
 </body>
 </html>
@@ -340,9 +343,11 @@ def pager_block(c: dict, by_id: dict, prefix: str) -> str:
 
 def card_html(c: dict, prefix: str, series_pos: tuple[int, int] | None = None,
               eager: bool = False) -> str:
-    """漫画卡片（v011 SD-11.3：真实缩略图、contain 不裁切、轻标签）。
+    """漫画卡片（v012 SD-12.1：真实缩略图、contain 不裁切）。
 
-    series_pos = (k, n)：该话在系列内的序号与系列话数（轻量标签用）；
+    series_pos = (k, n)：该话在系列内的序号与系列话数。**仅系列详情页
+    （兼容保留页）传入**；首页与搜索卡片不传（默认优先不加系列标签，
+    避免任何把后续独立篇误认作系列成员的视觉结构）。
     eager：首屏卡片（前 EAGER_CARDS 张）立即加载，其余惰性。
     """
     thumb_src = f"{prefix}assets/comics/thumbs/{esc(Path(c['thumb']).name)}"
@@ -378,37 +383,21 @@ def fmt_date(d: str) -> str:
 # ══════════════════════════════════════════════════════════════════════════
 
 def build_index(comics, series, rights, built) -> str:
-    """首页 = 全量漫画缩略图墙（v011 SD-11.1/11.2/11.3）。
+    """首页 = 连续漫画缩略图墙（v012 SD-12.1：无跨网格系列块级标题）。
 
-    排序用 gallery_order（系列优先归组 + 组内时间顺序）；同系列连续排列，
-    组首一张上方有低调分组小行；无 Hero / 统计卡 / CTA / 系列入口 / 最新收录。
+    排序仍用 gallery_order（系列连续组 + 组内官方顺序），同系列的话依旧挨着；
+    但**不再插入任何横跨网格的系列标题/分组横条**——v011 的 group-lead 会被
+    读成「章节标题」，使紧随其后的独立篇看起来从属于上一个系列（Brief §1）。
+    卡片也不再带系列轻标签（SD-12.1 默认优先不加标签）；系列信息见关于页。
     """
     ordered = sorted(comics, key=lambda c: c["gallery_order"])
-    series_total = {}
-    for c in comics:
-        if c["series"]:
-            series_total[c["series"]] = series_total.get(c["series"], 0) + 1
-
-    cards: list[str] = []
-    prev_series = None
-    series_seen: dict[str, int] = {}
-    for i, c in enumerate(ordered):
-        name = c["series"]
-        if name and name != prev_series:
-            # 组首：低调分组小行（左对齐、小字号、低对比；不是巨型标题板块）
-            cards.append(f'<div class="group-lead">{esc(name)}'
-                         f'<span class="gl-dim"> · {series_total[name]} 话</span></div>')
-        if name:
-            series_seen[name] = series_seen.get(name, 0) + 1
-            pos = (series_seen[name], series_total[name])
-        else:
-            pos = None
-        cards.append(card_html(c, "./", series_pos=pos, eager=i < EAGER_CARDS))
-        prev_series = name
+    cards = [card_html(c, "./", series_pos=None, eager=i < EAGER_CARDS)
+             for i, c in enumerate(ordered)]
 
     body = f"""<div class="gallery-head">
   <h1>全部 {len(comics)} 话</h1>
-  <p class="gh-count">按系列与发布时间排列 · <a href="./search.html">搜索</a></p>
+  <p class="gh-count">同系列的话挨着排列，整体按发布时间从旧到新 ·
+     <a href="./about.html">关于</a> · <a href="./search.html">搜索</a></p>
 </div>
 <div class="grid gallery-grid">
 {"".join(cards)}
@@ -455,6 +444,94 @@ def build_search(built) -> str:
     return page("搜索 · " + SITE_TITLE, "./", body, current="search.html", built=built)
 
 
+def build_about(comics, series, built) -> str:
+    """关于页（v012 SD-12.3「关于这个漫画库」）。
+
+    自然中文小标题 + 段落；不用巨大 Hero、统计卡片排或营销文案。
+    **所有统计与系列清单由 comics.json / series.json 现算**——Brief 明确要求
+    数据更新后关于页数字不得过期，因此本函数不接受任何手写话数。
+    """
+    n = len(comics)
+    ns = len(series)
+    n_members = sum(s["count"] for s in series)
+    n_standalone = n - n_members
+    dates = sorted(c["date"] for c in comics if c.get("date"))
+    first_d, last_d = (dates[0], dates[-1]) if dates else ("日期不详", "日期不详")
+    n_readable = sum(1 for c in comics if c.get("image"))
+    by_id = {c["item_id"]: c for c in comics}
+
+    # 系列清单：名称 + 话数 + 日期范围 + 第一话轻量链接（不重建大卡片导航）
+    series_rows = []
+    for s in series:
+        members = sorted((by_id[i] for i in s["item_ids"] if i in by_id),
+                         key=lambda m: m["series_order"])
+        first = members[0] if members else None
+        if first:
+            t = first["title"]
+            short = t if len(t) <= 12 else t[:12] + "…"
+            link = (f' — <a href="./comic/{esc(first["item_id"])}/">'
+                    f'从「{esc(short)}」开始读</a>')
+        else:
+            link = ""
+        series_rows.append(
+            f'<li><strong>{esc(s["name"])}</strong>'
+            f'（{s["count"]} 话，{esc(s["first_date"])} → {esc(s["last_date"])}）'
+            f'{link}</li>')
+
+    # CM_0111 特例说明（唯一非官方 canonical，R25 破例转正）
+    c111 = by_id.get("CM_0111")
+    c111_txt = (f'<code>CM_0111</code>「{esc(c111["title"])}」' if c111
+                else "唯一一话民间汉化")
+
+    body = f"""<section class="hero">
+  <h1>关于这个漫画库</h1>
+  <p class="lead">这是一个由爱好者整理、面向玩家的《炽焰天穹》四格漫画阅读站。
+     这里说明它是什么、收了什么、首页怎么排、图片从哪来。</p>
+</section>
+
+<div class="prose">
+  <h2>这个网站是什么</h2>
+  <p>这是一个<strong>非官方</strong>的漫画整理与阅读站，与 WFS / Key 及官方运营方
+     无从属关系，也不冒充官方。《炽焰天穹》(Heaven Burns Red) 四格漫画的图像、
+     原作与相关权利归原权利人所有。本站公开完整图片的依据是收藏者的授权声明
+     （状态记为 <code>user_declared</code>）——本项目<strong>未持有书面许可材料</strong>，
+     因此不声称已核验书面授权；每一话图片下方都标注了来源与署名。若您认为内容不当，
+     请通过仓库 Issues 联系，将立即处理。</p>
+
+  <h2>当前收录</h2>
+  <p>共收录 <strong>{n} 话</strong>四格漫画，全部可以在站内阅读完整图片
+     （当前 {n_readable} 话已启用）。其中已确认的系列 <strong>{ns} 个</strong>、
+     共 {n_members} 话；其余 <strong>{n_standalone} 话</strong>为独立篇，
+     未发现官方系列体例证据。收录时间覆盖 {esc(first_d)} 至 {esc(last_d)}
+     （按官方发布时间）。</p>
+
+  <h2>首页排列规则</h2>
+  <p>漫画大体按发布时间从旧到新排列。如果几话明确属于同一个系列，就把它们放在一起，
+     方便连续阅读。整个系列的位置取决于它最早一话的发布日期；系列内部按已经确认的
+     官方顺序排列。因此偶尔会看到日期不完全连续的情况，这是为了保证系列不被拆开。
+     同一系列的话在首页是挨着的，但首页<strong>不用系列标题把网格分区</strong>——
+     系列只影响排列顺序，不影响页面结构。</p>
+
+  <h2>系列情况</h2>
+  <p>目前确认 {ns} 个系列（顺序与话数由分类数据自动生成）：</p>
+  <ul class="about-series">
+    {''.join(series_rows)}
+  </ul>
+
+  <h2>图片来源与署名</h2>
+  <p>每一话的完整图片下方都有「来源与署名」区：可点击的官方动态 / 专栏原帖链接、
+     官方发布账号、漫画作者、翻译 / 汉化信息与版本说明。官方文本没有署名的，
+     一律显示「未标注 / 待核实」，<strong>不猜作者</strong>。</p>
+  <p>{c111_txt}是唯一使用民间汉化完整版的话：官方原动态已被删除、完整原图不可再生，
+     经收藏者裁定采用汉化工房九九组译制的版本（发布者 StuartRiki_鍵視），
+     页面已明确标注 <code>official_source=false</code>，不冒充官方；
+     将来官方若恢复原帖，会换回官方完整原图。</p>
+  <p>本站不跟踪访客：无 Cookie、无分析脚本、无第三方请求。</p>
+</div>"""
+    return page("关于这个漫画库 · " + SITE_TITLE, "./", body,
+                current="about.html", built=built)
+
+
 def build_series_page(series, comics, built) -> str:
     by_id = {c["item_id"]: c for c in comics}
     cards = "".join(
@@ -467,6 +544,8 @@ def build_series_page(series, comics, built) -> str:
   <h1>系列</h1>
   <p class="lead">共 {len(series)} 个系列、{sum(s["count"] for s in series)} 话。
      系列内顺序依据官方合辑展示体例与连载体例确定，不猜测官方话数。</p>
+  <p class="gh-count">此页为旧链接兼容保留，未在导航中展示；
+     首页漫画墙中同一系列的话仍然挨着排列，见<a href="./about.html">关于页</a>的排列规则说明。</p>
 </section>
 
 <div class="notice">
@@ -567,6 +646,7 @@ def build_404(built) -> str:
 <div class="cta-row">
   <a class="btn btn-primary" href="./index.html">全部漫画</a>
   <a class="btn" href="./search.html">搜索</a>
+  <a class="btn" href="./about.html">关于</a>
 </div>"""
     return page("404 · " + SITE_TITLE, "./", body, built=built)
 
@@ -626,8 +706,8 @@ def main() -> None:
         len(list(final_dir.glob("assets/comics/thumbs/*.jpg")))
     n_readable = sum(1 for c in comics if c.get("image"))
     print(f"✅ 站点构建完成：{n_html} 个 HTML，合计 {total_kb:.0f} KB")
-    print(f"   单话页 {len(comics)} · 系列页 {len(series)} · 顶层页 5"
-          f"（首页缩略图墙 / browse 重定向 / 搜索 / 系列 / 404）")
+    print(f"   单话页 {len(comics)} · 系列页 {len(series)} · 顶层页 6"
+          f"（首页漫画墙 / 关于 / browse 重定向 / 搜索 / 系列兼容页 / 404）")
     print(f"   数据：comics.json / series.json / rights_manifest.json / "
           f"media_manifest.json（紧凑版）")
     print(f"   媒体：{n_img} 个图片文件（全图 + 缩略图），"
@@ -656,8 +736,9 @@ def build_into(root: Path, comics, series, rights, r_index, by_id, built: str) -
 
     (root / ".nojekyll").write_text("# GitHub Pages: bypass Jekyll\n", encoding="utf-8")
 
-    # 静态页（v011：browse = 重定向页；rights 页已删除）
+    # 静态页（v012：browse = 重定向页；rights 页已删除；series 为兼容保留页）
     (root / "index.html").write_text(build_index(comics, series, rights, built), encoding="utf-8")
+    (root / "about.html").write_text(build_about(comics, series, built), encoding="utf-8")
     (root / "browse.html").write_text(build_browse(built), encoding="utf-8")
     (root / "search.html").write_text(build_search(built), encoding="utf-8")
     (root / "series.html").write_text(build_series_page(series, comics, built), encoding="utf-8")
