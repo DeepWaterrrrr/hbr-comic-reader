@@ -33,6 +33,7 @@ body {
   font-size: 16px;
   line-height: 1.7;
   overflow-wrap: break-word;
+  touch-action: manipulation;          /* 防移动端双击缩放延迟（Vercel 指南） */
 }
 
 a { color: var(--accent); text-decoration: none; }
