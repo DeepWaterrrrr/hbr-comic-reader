@@ -38,7 +38,7 @@ public-reader/
 ├─ README.md                 本文件
 ├─ PUBLISHING_GUIDE.md       发布指南（含授权边界与部署步骤）
 ├─ .gitignore
-├─ .github/workflows/        GitHub Actions 自动部署（main 推送 → 重建 + 20 项自检 → 部署）
+├─ .github/workflows/        GitHub Actions 自动部署（main 推送 → 重建 + 23 项自检 → 部署）
 ├─ data/                     ← build_catalog.py / build_media.py 产出（可读版源数据）
 │  ├─ comics.json            213 条轻量条目（公开字段白名单 + 署名 attribution）
 │  ├─ series.json            6 个系列
@@ -49,7 +49,7 @@ public-reader/
 │  └─ thumbs/<item_id>.jpg   213 张缩略图（宽 480）
 ├─ scripts/
 │  ├─ build_site.py          目录数据 + media → 静态站点（CI 用）
-│  └─ validate_site.py       上线前自检（20 项验收，CI 用）
+│  └─ validate_site.py       上线前自检（23 项验收，CI 用）
 └─ site/                     ← 构建产物，即 GitHub Pages 发布目录（不入库，CI 重建）
    ├─ assets/{css,js,img}/   自制样式、交互、中性占位图
    ├─ assets/comics/         公开图片副本（构建时从 media/ 复制）
@@ -64,7 +64,7 @@ public-reader/
 > `data/*.json` 与 `media/` 由项目侧工具链生成（依赖内部 manifest 与归档图片，
 > 不属于公开内容），因此 `build_catalog.py` / `build_media.py` **不随本仓库发布**；
 > 新增漫画的完整流程在项目侧执行后，把更新后的 `data/` 与 `media/` 提交进来即可，
-> CI 会自动重建站点并跑 20 项自检（任一 FAIL 即中止部署）。
+> CI 会自动重建站点并跑 23 项自检（任一 FAIL 即中止部署）。
 
 ## 排序口径（Brief v011 SD-11.2 + v012 SD-12.1）
 

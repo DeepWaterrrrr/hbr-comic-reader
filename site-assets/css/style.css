@@ -1,5 +1,9 @@
 /* ============================================================
    HBR 四格漫画站 — 自制样式（无第三方内容，无跟踪器）
+   v013（Brief v013「翻页导航贴图」）：单话页 DOM 次序改为
+   完整图 → 翻页导航 → 来源与署名；翻页紧贴图片下缘（间距 12px，
+   Brief 要求 8–16px），容器宽度与漫画阅读区（720px）协调；
+   相邻话标题按钮内单行省略号；点击高度 ≥44px；带 :active 按下态。
    v012（Brief v012 SD-12.1/12.2/12.3）：安静、左对齐、漫画画廊；
    源文件位于 public-reader/site-assets/css/style.css，
    由 scripts/build_site.py 复制进 site/assets/css/。
@@ -342,7 +346,8 @@ ul.about-series li a { font-size: 0.86rem; }
   margin: 0 0 12px;
 }
 
-.reader { margin: 0 0 20px; }
+/* v013：图→翻页间距 12px（Brief 要求 8–16px；翻页之下才是来源与署名） */
+.reader { margin: 0 0 12px; }
 .reader .placeholder { min-height: 300px; }
 .reader img {
   display: block;
@@ -394,17 +399,20 @@ ul.about-series li a { font-size: 0.86rem; }
 .source-list .sl-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .source-list .sl-detail { color: var(--text-dim); font-size: 0.82rem; margin-top: 4px; }
 
+/* ---------- 翻页导航（v013：紧贴漫画图片下缘，来源与署名之上） ---------- */
 .pager {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
-  margin: 24px 0 8px;
+  margin: 0 0 22px;
+  max-width: 720px;                   /* 与漫画阅读区（.reader img）同宽，空间紧凑 */
 }
 .pager a {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  min-height: 60px;
+  min-width: 0;                       /* 允许 flex 子项收缩以启用省略号 */
+  min-height: 60px;                   /* ≥44px 点击区域（SD-13.2） */
   padding: 10px 14px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -413,13 +421,26 @@ ul.about-series li a { font-size: 0.86rem; }
   font-size: 0.88rem;
 }
 .pager a:hover { border-color: var(--accent); text-decoration: none; }
+.pager a:active { border-color: var(--accent); background: var(--accent-soft); }
 .pager .pl { font-size: 0.74rem; color: var(--text-dim); }
-.pager .pt { font-weight: 500; }
+.pager .pt {
+  display: block;
+  font-weight: 500;
+  white-space: nowrap;                /* 长标题单行截断，不把按钮撑成高大卡片 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .pager .next { text-align: right; }
 .pager .disabled {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  min-height: 60px;
+  padding: 10px 14px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
   opacity: 0.45;
-  pointer-events: none;
-  border-style: dashed;
 }
 
 /* ---------- 表格 ---------- */

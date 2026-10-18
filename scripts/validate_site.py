@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""v012 validate_site.py — 上线前自检（Brief v012 §5/§6 验收 + 既有标准）。
+"""v013 validate_site.py — 上线前自检（Brief v013 §4/§5 验收 + 既有标准）。
 
 用法：
     python public-reader/scripts/validate_site.py
@@ -10,14 +10,17 @@
 退出码：全部 PASS 或明确标注的 SKIPPED → 0；任一 FAIL → 1。
 GitHub Actions 工作流依赖此退出码中止部署。
 
-v012 变化（Brief v012「三导航 / 关于页 / 去系列块级标题」）：
-- #17 反转 v011 的「分组小行数 == 系列数」断言：**跨网格系列标题必须为 0**
-  （全站 HTML 扫描 group-lead / gl-dim，首页重点）；名称改为「连续漫画墙」；
-- #18 增加 series 兼容页仍在（series.html + series/<slug>/ 不得删成 404）；
-- 新增 #19 主导航严格三项（漫画/搜索/关于）且全站一致、about.html 存在；
-- 新增 #20 关于页数据一致性（统计/系列清单由数据现算比对，防手写数字过期）；
-- #07/#13 探测清单增加 about.html；
-- v011 既有项（thumb 拼接回归、contain、eager/lazy、署名、媒体一致性）全部保留。
+v013 变化（Brief v013「翻页导航贴图」）：
+- 新增 #21 单话页 DOM 次序：完整图 → 翻页导航 → 来源与署名，全量 213 页；
+  翻页恰好一套（不重复）、aria-label="漫画翻页"、无 href="#" 占位链接、
+  边界禁用侧必须是 span 而非链接；
+- 新增 #22 首话/末话边界：按真实 reading_index 取首末话，禁用侧实测为
+  span.disabled 且文案「已是首话/已是末话」，全站扫描 href="#"；
+- 新增 #23 翻页贴图样式与手机可用性：图→翻页间距 8–16px、按钮 ≥44px、
+  标题 ellipsis 截断、:active 按下态、容器 max-width 与阅读区协调；
+- #15 的「署名区在图片下方」口径不变（中间插入翻页导航，语义仍满足）；
+- v011/v012 既有项（thumb 拼接回归、contain、三导航、关于页数据一致性）
+  全部保留。
 """
 
 from __future__ import annotations
@@ -763,6 +766,8 @@ def check_14(skip_rebuild: bool, node: str | None) -> None:
 
 # ══════════════════════════════════════════════════════════════════════════
 #  15. 每话「来源与署名」区完整（Brief v010 §3A）
+#      注：v013 起翻页导航插入图与署名之间；署名仍在图片下方（经翻页），
+#      本项「署名区不在图片下方」断言语义不变，次序细项由 #21 专查。
 # ══════════════════════════════════════════════════════════════════════════
 def check_15(comics) -> None:
     problems = []
@@ -1193,6 +1198,166 @@ def check_20(comics, series) -> None:
 
 
 # ══════════════════════════════════════════════════════════════════════════
+# 21. 单话页 DOM 次序：完整图 → 翻页导航 → 来源与署名（Brief v013 §1/§4）
+#     全量 213 页逐一实测，不抽样。
+# ══════════════════════════════════════════════════════════════════════════
+def check_21(comics) -> None:
+    problems = []
+    n_ok = 0
+    for c in comics:
+        txt = read(SITE / "comic" / c["item_id"] / "index.html")
+        if not txt:
+            problems.append(f"{c['item_id']} 页面缺失")
+            continue
+        # 21a 翻页导航必须存在且恰好一套（Brief：不得在页面远处重复一套）
+        n_pager = len(re.findall(r'<nav class="pager"', txt))
+        if n_pager != 1:
+            problems.append(f"{c['item_id']} 翻页导航数量={n_pager}（应恰好 1 套）")
+            continue
+        # 21b DOM 次序：图像区（完整图或占位）< 翻页 < 署名
+        pos_img = txt.find('<figure class="reader"')
+        pos_ph = txt.find('class="placeholder"')
+        pos_reader = max(pos_img, pos_ph)
+        pos_pager = txt.find('<nav class="pager"')
+        pos_attr = txt.find('<section class="attribution"')
+        if pos_reader < 0:
+            problems.append(f"{c['item_id']} 缺少图像区（完整图或占位）")
+            continue
+        if pos_attr < 0:
+            problems.append(f"{c['item_id']} 缺少「来源与署名」区")
+            continue
+        if not (pos_reader < pos_pager < pos_attr):
+            problems.append(f"{c['item_id']} DOM 次序不是 图→翻页→署名")
+            continue
+        # 21c 无障碍标签与占位链接
+        if 'aria-label="漫画翻页"' not in txt:
+            problems.append(f"{c['item_id']} 翻页导航缺少 aria-label=\"漫画翻页\"")
+        if 'href="#"' in txt:
+            problems.append(f"{c['item_id']} 存在 href=\"#\" 占位链接")
+        # 21d 边界禁用侧必须是 span（无 href、无 404）；非边界侧必须指向真实 item
+        m = re.search(r'<nav class="pager"[^>]*>(.*?)</nav>', txt, re.S)
+        pager_html = m.group(1) if m else ""
+        for side, iid in (("prev", c["prev_id"]), ("next", c["next_id"])):
+            if iid is None:
+                if f'<a class="{side}"' in pager_html:
+                    problems.append(f"{c['item_id']} 边界侧 {side} 渲染成了链接（应禁用）")
+                if f'class="{side} disabled"' not in pager_html:
+                    problems.append(f"{c['item_id']} 边界侧 {side} 缺少禁用提示")
+            elif f'href="../../comic/{iid}/"' not in pager_html:
+                problems.append(f"{c['item_id']} 翻页 {side} 未指向 {iid}")
+        if not problems or all(c["item_id"] not in p for p in problems):
+            n_ok += 1
+
+    add("21", "单话页 DOM 次序：完整图 → 翻页 → 来源与署名", not problems,
+        f"全量 {len(comics)} 页逐一实测：图像→翻页→署名次序 {n_ok} 页通过；"
+        f"翻页恰好一套、aria-label 在场、无 href=\"#\"、边界禁用侧为 span"
+        + (f"；问题：{problems[:5]}" if problems else "，零违例"))
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# 22. 首话/末话边界（Brief v013 SD-13.2：缺失一侧明确禁用，不得 404）
+# ══════════════════════════════════════════════════════════════════════════
+def check_22(comics) -> None:
+    by_ri = sorted(comics, key=lambda c: c["reading_index"])
+    first, last = by_ri[0], by_ri[-1]
+    problems = []
+
+    ftxt = read(SITE / "comic" / first["item_id"] / "index.html")
+    ltxt = read(SITE / "comic" / last["item_id"] / "index.html")
+
+    # 22a 首话：prev 禁用（span），next 为真实链接
+    if 'class="prev disabled"' not in ftxt:
+        problems.append(f"首话 {first['item_id']} 的上一话侧未渲染禁用态")
+    if '<a class="prev"' in ftxt:
+        problems.append(f"首话 {first['item_id']} 的上一话侧不应是链接")
+    if "已是首话" not in ftxt:
+        problems.append(f"首话 {first['item_id']} 缺少「已是首话」提示")
+    if f'href="../../comic/{first["next_id"]}/"' not in ftxt:
+        problems.append(f"首话 {first['item_id']} 的下一话链接不是 {first['next_id']}")
+
+    # 22b 末话：next 禁用（span），prev 为真实链接
+    if 'class="next disabled"' not in ltxt:
+        problems.append(f"末话 {last['item_id']} 的下一话侧未渲染禁用态")
+    if '<a class="next"' in ltxt:
+        problems.append(f"末话 {last['item_id']} 的下一话侧不应是链接")
+    if "已是末话" not in ltxt:
+        problems.append(f"末话 {last['item_id']} 缺少「已是末话」提示")
+    if f'href="../../comic/{last["prev_id"]}/"' not in ltxt:
+        problems.append(f"末话 {last['item_id']} 的上一话链接不是 {last['prev_id']}")
+
+    # 22c 全站扫描：任何单话页不得出现 href="#"（占位链接会骗点击）
+    bad_hash = [c["item_id"] for c in comics
+                if 'href="#"' in read(SITE / "comic" / c["item_id"] / "index.html")]
+    if bad_hash:
+        problems.append(f"存在 href=\"#\" 占位链接：{bad_hash[:5]}")
+
+    add("22", "首话/末话边界禁用正确且无占位链接", not problems,
+        f"首话={first['item_id']}（reading_index {first['reading_index']}，"
+        f"上一话禁用/下一话→{first['next_id']}）；"
+        f"末话={last['item_id']}（reading_index {last['reading_index']}，"
+        f"上一话←{last['prev_id']}/下一话禁用）；全站 href=\"#\" 扫描 0"
+        + (f"；问题：{problems[:5]}" if problems else "，边界正确"))
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# 23. 翻页贴图样式与手机可用性（Brief v013 SD-13.1/SD-13.2）
+# ══════════════════════════════════════════════════════════════════════════
+def check_23(comics) -> None:
+    css = read(SITE / "assets/css/style.css")
+    problems = []
+
+    # 23a 图→翻页间距 8–16px（Brief §1：紧贴图片下缘）
+    m = re.search(r"\.reader\s*\{[^}]*margin:\s*0\s+0\s+(\d+)px", css)
+    gap = int(m.group(1)) if m else None
+    if gap is None:
+        problems.append("未找到 .reader 的 margin 声明")
+    elif not (8 <= gap <= 16):
+        problems.append(f"图→翻页间距 {gap}px 不在 Brief 要求的 8–16px")
+
+    # 23b 按钮点击高度 ≥44px（含禁用态对称卡片）
+    m = re.search(r"\.pager a\s*\{[^}]*min-height:\s*(\d+)px", css)
+    h = int(m.group(1)) if m else None
+    if h is None or h < 44:
+        problems.append(f".pager a 点击高度 {h} 小于 44px")
+    if "min-height" not in re.search(r"\.pager \.disabled\s*\{[^}]*\}", css).group(0):
+        problems.append("禁用态未保持与可点侧一致的点击高度")
+
+    # 23c 标题截断（长标题不得把按钮撑成高大卡片）
+    pt_css = re.search(r"\.pager \.pt\s*\{[^}]*\}", css)
+    if not pt_css:
+        problems.append("缺少 .pager .pt 样式")
+    else:
+        for needle in ("text-overflow: ellipsis", "white-space: nowrap"):
+            if needle not in pt_css.group(0):
+                problems.append(f".pager .pt 缺少 {needle}（长标题会撑高按钮）")
+
+    # 23d 按下态（手机触觉反馈替代 hover）
+    if ".pager a:active" not in css:
+        problems.append("翻页按钮缺少 :active 按下态")
+
+    # 23e 容器宽度与漫画阅读区协调
+    m = re.search(r"\.pager\s*\{[^}]*max-width:\s*(\d+)px", css)
+    if not m:
+        problems.append("翻页容器未限制与阅读区协调的 max-width")
+    elif int(m.group(1)) > 720:
+        problems.append(f"翻页容器 max-width {m.group(1)}px 超出阅读区宽度 720px")
+
+    # 23f 翻页区不得出现写死像素宽度（防窄屏溢出）
+    sample = read(SITE / "comic" / comics[0]["item_id"] / "index.html")
+    for mm in re.finditer(r'style="[^"]*width:\s*\d{3,}px', sample):
+        problems.append(f"发现写死宽度：{mm.group(0)[:60]}")
+        break
+
+    add("23", "翻页贴图样式与手机可用性（间距/高度/截断/按下态/宽度）",
+        not problems,
+        f"图→翻页间距 {gap}px（8–16px）；按钮 min-height {h}px（≥44）；"
+        f"标题 ellipsis 单行截断；:active 按下态在场；"
+        f"容器 max-width {m.group(1) if m else '?'}px 与 720px 阅读区协调；"
+        f"翻页区无写死宽度"
+        + (f"；问题：{problems[:5]}" if problems else ""))
+
+
+# ══════════════════════════════════════════════════════════════════════════
 #  主流程
 # ══════════════════════════════════════════════════════════════════════════
 def main() -> None:
@@ -1240,6 +1405,9 @@ def main() -> None:
     check_18(series)
     check_19(comics, series)
     check_20(comics, series)
+    check_21(comics)
+    check_22(comics)
+    check_23(comics)
 
     # ── 汇总 ──
     n_pass = sum(1 for r in RESULTS if r[2] == "PASS")
@@ -1247,7 +1415,7 @@ def main() -> None:
     n_skip = sum(1 for r in RESULTS if r[2] == "SKIPPED")
 
     print("=" * 78)
-    print("HBR public-reader 上线前自检（Brief v012 §5/§6 验收 + 既有署名标准）")
+    print("HBR public-reader 上线前自检（Brief v013 §4/§5 验收 + 既有署名标准）")
     print("=" * 78)
     for no, name, status, detail in RESULTS:
         mark = {"PASS": "✅", "FAIL": "❌", "SKIPPED": "⏭️ "}[status]

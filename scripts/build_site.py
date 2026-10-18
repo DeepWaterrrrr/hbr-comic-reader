@@ -1,6 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""v012 build_site.py — 由 data/*.json + media/ 生成可发布的静态站点（site/）。
+"""v013 build_site.py — 由 data/*.json + media/ 生成可发布的静态站点（site/）。
+
+v013 变化（Brief v013「翻页导航贴图」）：
+
+- **单话页 DOM 次序改为 完整图 → 翻页导航 → 来源与署名**：v010–v012 的
+  `pager_block` 生成在 `attribution_block` 之后，读者看完漫画必须先滚过
+  整段「来源与署名」（5 行署名 + 来源链接清单）才够得着「上一话/下一话」。
+  本轮把翻页导航紧贴漫画图片下缘（间距 12px，Brief 要求 8–16px），
+  来源与署名整体下移到翻页之后——**内容零删减**，只是次序调整；
+- pager 无障碍与边界：`aria-label="漫画翻页"`；首话/末话缺失一侧渲染
+  `<span class="… disabled">`（无 href、无 404），文案「已是首话/已是末话」；
+- 相邻话标题在按钮内单行省略号截断（CSS `.pager .pt`），长标题不再把
+  按钮撑成很高的大卡片；按钮点击高度 ≥44px、带 :active 按下态；
+- 不改 `reading_index` / `gallery_order` / 图片 / 署名数据（SD-13.3）。
 
 v012 变化（Brief v012「三导航 / 关于页 / 去系列块级标题」）：
 
@@ -172,7 +185,7 @@ def page(title: str, prefix: str, body: str, current: str = "",
 # ══════════════════════════════════════════════════════════════════════════
 
 def render_reader(c: dict, rights: dict, prefix: str) -> str:
-    """单话页的图像区（位于「来源与署名」区正上方）。
+    """单话页的图像区（v013：翻页导航紧贴其下，再往下才是来源与署名）。
 
     - media_manifest 有该 item 记录（授权范围内已导出媒体）→ 输出完整图片
       `<img loading="lazy" decoding="async">`，保留原始宽高属性；
@@ -208,7 +221,8 @@ def render_reader(c: dict, rights: dict, prefix: str) -> str:
 
 
 # ══════════════════════════════════════════════════════════════════════════
-#  来源与署名（Brief v010 §3A：完整漫画图片正下方，必须可见）
+#  来源与署名（Brief v010 §3A：完整漫画图片之后必须可见；
+#  v013：翻页导航移到图与署名之间，署名内容零删减、整体下移）
 # ══════════════════════════════════════════════════════════════════════════
 
 def sources_block(c: dict) -> str:
@@ -240,7 +254,7 @@ def sources_block(c: dict) -> str:
 
 
 def attribution_block(c: dict) -> str:
-    """「来源与署名」区：位于完整漫画图片正下方（Brief §3A）。"""
+    """「来源与署名」区：位于翻页导航之下（v013 前为图片正下方，Brief §3A 语义不变）。"""
     a = c.get("attribution") or {}
     work = a.get("work") or {}
     acct = a.get("official_account") or {}
@@ -324,20 +338,28 @@ def exception_block(c: dict) -> str:
 
 
 def pager_block(c: dict, by_id: dict, prefix: str) -> str:
+    """翻页导航（v013：紧贴漫画图片下缘，来源与署名之上）。
+
+    - 首话/末话缺失一侧渲染 `<span class="… disabled">`：**无 href、无 404**，
+      文案「已是首话 / 已是末话」明确告知边界（SD-13.2）；
+    - 相邻话标题在按钮内单行省略号截断（CSS），长标题不撑高按钮；
+    - prev/next 目标由 reading_index 链给出，**不按 CM 编号加减**
+      （item ID 有退休与合并缺口，SD-13.2）。
+    """
     prev_c = by_id.get(c["prev_id"])
     next_c = by_id.get(c["next_id"])
 
-    def cell(target: dict, cls: str, label: str) -> str:
+    def cell(target: dict, cls: str, label: str, edge: str) -> str:
         if not target:
             return (f'<span class="{cls} disabled"><span class="pl">{label}</span>'
-                    '<span class="pt">没有了</span></span>')
+                    f'<span class="pt">{edge}</span></span>')
         return (f'<a class="{cls}" href="{prefix}comic/{esc(target["item_id"])}/">'
                 f'<span class="pl">{label}</span>'
                 f'<span class="pt">{esc(target["title"])}</span></a>')
 
-    return ('<nav class="pager" aria-label="上一话 / 下一话">'
-            + cell(prev_c, "prev", "‹ 上一话")
-            + cell(next_c, "next", "下一话 ›")
+    return ('<nav class="pager" aria-label="漫画翻页">'
+            + cell(prev_c, "prev", "‹ 上一话", "已是首话")
+            + cell(next_c, "next", "下一话 ›", "已是末话")
             + "</nav>")
 
 
@@ -629,8 +651,8 @@ def build_comic_page(c: dict, by_id: dict, rights: dict, built: str) -> str:
 
 {exception_block(c)}
 {render_reader(c, rights, "../../")}
-{attribution_block(c)}
 {pager_block(c, by_id, "../../")}
+{attribution_block(c)}
 
 <p><a href="../../index.html">← 返回全部漫画</a></p>"""
     return page(f"{c['title']} · {SITE_TITLE}", "../../", body, built=built,
