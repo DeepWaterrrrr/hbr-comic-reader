@@ -404,7 +404,7 @@ ul.about-series li a { font-size: 0.86rem; }
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
-  margin: 0 0 22px;
+  margin: 0 auto 22px;                /* 水平居中：与 .reader img（max-width:720px + margin:0 auto）严格同宽同位 */
   max-width: 720px;                   /* 与漫画阅读区（.reader img）同宽，空间紧凑 */
 }
 .pager a {

@@ -17,7 +17,8 @@ v013 变化（Brief v013「翻页导航贴图」）：
 - 新增 #22 首话/末话边界：按真实 reading_index 取首末话，禁用侧实测为
   span.disabled 且文案「已是首话/已是末话」，全站扫描 href="#"；
 - 新增 #23 翻页贴图样式与手机可用性：图→翻页间距 8–16px、按钮 ≥44px、
-  标题 ellipsis 截断、:active 按下态、容器 max-width 与阅读区协调；
+  标题 ellipsis 截断、:active 按下态、容器 max-width 与阅读区同宽且
+  margin: 0 auto 水平居中（与 .reader img 同位，防左对齐窄条回归）；
 - #15 的「署名区在图片下方」口径不变（中间插入翻页导航，语义仍满足）；
 - v011/v012 既有项（thumb 拼接回归、contain、三导航、关于页数据一致性）
   全部保留。
@@ -1335,12 +1336,14 @@ def check_23(comics) -> None:
     if ".pager a:active" not in css:
         problems.append("翻页按钮缺少 :active 按下态")
 
-    # 23e 容器宽度与漫画阅读区协调
+    # 23e 容器宽度与漫画阅读区协调（同宽 + 居中对齐）
     m = re.search(r"\.pager\s*\{[^}]*max-width:\s*(\d+)px", css)
     if not m:
         problems.append("翻页容器未限制与阅读区协调的 max-width")
     elif int(m.group(1)) > 720:
         problems.append(f"翻页容器 max-width {m.group(1)}px 超出阅读区宽度 720px")
+    if not re.search(r"\.pager\s*\{[^}]*margin:\s*0\s+auto", css):
+        problems.append("翻页容器未水平居中（margin: 0 auto）——会与居中的漫画图左右错位")
 
     # 23f 翻页区不得出现写死像素宽度（防窄屏溢出）
     sample = read(SITE / "comic" / comics[0]["item_id"] / "index.html")
@@ -1348,11 +1351,11 @@ def check_23(comics) -> None:
         problems.append(f"发现写死宽度：{mm.group(0)[:60]}")
         break
 
-    add("23", "翻页贴图样式与手机可用性（间距/高度/截断/按下态/宽度）",
+    add("23", "翻页贴图样式与手机可用性（间距/高度/截断/按下态/宽度/居中）",
         not problems,
         f"图→翻页间距 {gap}px（8–16px）；按钮 min-height {h}px（≥44）；"
         f"标题 ellipsis 单行截断；:active 按下态在场；"
-        f"容器 max-width {m.group(1) if m else '?'}px 与 720px 阅读区协调；"
+        f"容器 max-width {m.group(1) if m else '?'}px 与 720px 阅读区同宽且 margin:0 auto 居中；"
         f"翻页区无写死宽度"
         + (f"；问题：{problems[:5]}" if problems else ""))
 
