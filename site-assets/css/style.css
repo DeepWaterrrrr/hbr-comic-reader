@@ -358,7 +358,9 @@ ul.about-series li a { font-size: 0.86rem; }
   border-radius: 6px;
   background: var(--surface-2);
 }
-.reader figcaption { text-align: left; margin-top: 8px; font-size: 0.82rem; color: var(--text-dim); }
+/* 2026-11-11：图注下移到翻页之后，脱离 figure 改用 p.reader-caption；
+   选择器并列，字体/颜色/对齐/间距与原来的 figcaption 完全一致。 */
+.reader figcaption, .reader-caption { text-align: left; margin: 8px 0 12px; font-size: 0.82rem; color: var(--text-dim); }
 
 /* ---------- 来源与署名（Brief v010 §3A，v011 不得退化） ---------- */
 .attribution {

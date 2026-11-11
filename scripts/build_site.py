@@ -2,6 +2,17 @@
 # -*- coding: utf-8 -*-
 """v013 build_site.py — 由 data/*.json + media/ 生成可发布的静态站点（site/）。
 
+2026-11-11 追加调整（用户裁定「只把图注与翻页两块对调」）：
+
+- 单话页次序进一步改为 **完整图 → 翻页导航 → 图注 → 来源与署名**：
+  v013 时「标题 · 日期 · 存档画质」这行图注仍夹在图片与翻页之间，
+  读者看完漫画要先越过它才够得着「上一话/下一话」。本轮把图注整行
+  下移到翻页之后，翻页保持紧贴图片下缘（间距 12px 不变）；
+- 图注内容、文案、样式、翻页按钮本身、来源与署名全部零改动；
+  `figcaption` 脱离 `figure` 后改为 `<p class="result-count reader-caption">`，
+  CSS 选择器同步扩展，保证字体/颜色/对齐完全一致；
+- 不改 reading_index / gallery_order / 图片 / 署名数据。
+
 v013 变化（Brief v013「翻页导航贴图」）：
 
 - **单话页 DOM 次序改为 完整图 → 翻页导航 → 来源与署名**：v010–v012 的
@@ -185,11 +196,12 @@ def page(title: str, prefix: str, body: str, current: str = "",
 # ══════════════════════════════════════════════════════════════════════════
 
 def render_reader(c: dict, rights: dict, prefix: str) -> str:
-    """单话页的图像区（v013：翻页导航紧贴其下，再往下才是来源与署名）。
+    """单话页的图像区（2026-11-11：翻页紧贴其下，图注再往下，最后来源与署名）。
 
     - media_manifest 有该 item 记录（授权范围内已导出媒体）→ 输出完整图片
       `<img loading="lazy" decoding="async">`，保留原始宽高属性；
     - 其余（未授权 / 未导出）→ 自制中性占位图 + 官方原帖入口。
+    - 图注由 `reader_caption()` 单独生成，排在翻页导航之后。
     """
     rec = rights.get(c["item_id"])
     if rec and c.get("image"):
@@ -198,8 +210,6 @@ def render_reader(c: dict, rights: dict, prefix: str) -> str:
   <img src="{src}" alt="{esc(c['title'])}（第 {c['reading_index']} 话）完整漫画"
        width="{c['image_width']}" height="{c['image_height']}"
        loading="lazy" decoding="async">
-  <figcaption class="result-count">{esc(c['title'])} · {esc(c['date'])} ·
-    存档画质 {c['image_width']}×{c['image_height']}</figcaption>
 </figure>"""
 
     official_src = next((s for s in c["sources"] if s["official"]), None)
@@ -218,6 +228,20 @@ def render_reader(c: dict, rights: dict, prefix: str) -> str:
        target="_blank">前往官方原帖 ↗</a>
   </div>
 </div>"""
+
+
+def reader_caption(c: dict, rights: dict) -> str:
+    """图注「标题 · 日期 · 存档画质」：2026-11-11 从 figure 内移到翻页导航之后。
+
+    内容与 v013 的 `<figcaption>` 逐字一致，只是标签换成 `<p>`（figcaption
+    不能脱离 figure 单独存在）；样式由 CSS 的 `.reader-caption` 承接。
+    占位图页（无权 / 未导出）原本就没有图注，返回空串。
+    """
+    rec = rights.get(c["item_id"])
+    if not (rec and c.get("image")):
+        return ""
+    return f"""<p class="result-count reader-caption">{esc(c['title'])} · {esc(c['date'])} ·
+    存档画质 {c['image_width']}×{c['image_height']}</p>"""
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -338,7 +362,7 @@ def exception_block(c: dict) -> str:
 
 
 def pager_block(c: dict, by_id: dict, prefix: str) -> str:
-    """翻页导航（v013：紧贴漫画图片下缘，来源与署名之上）。
+    """翻页导航（v013：紧贴漫画图片下缘；2026-11-11 起图注移到它之后）。
 
     - 首话/末话缺失一侧渲染 `<span class="… disabled">`：**无 href、无 404**，
       文案「已是首话 / 已是末话」明确告知边界（SD-13.2）；
@@ -652,6 +676,7 @@ def build_comic_page(c: dict, by_id: dict, rights: dict, built: str) -> str:
 {exception_block(c)}
 {render_reader(c, rights, "../../")}
 {pager_block(c, by_id, "../../")}
+{reader_caption(c, rights)}
 {attribution_block(c)}
 
 <p><a href="../../index.html">← 返回全部漫画</a></p>"""

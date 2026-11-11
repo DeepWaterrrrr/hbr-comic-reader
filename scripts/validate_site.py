@@ -10,6 +10,14 @@
 退出码：全部 PASS 或明确标注的 SKIPPED → 0；任一 FAIL → 1。
 GitHub Actions 工作流依赖此退出码中止部署。
 
+2026-11-11 追加调整（用户裁定「只把图注与翻页两块对调」）：
+- #21 次序断言扩展为 完整图 → 翻页 → 图注 → 来源与署名，全量 218 页：
+  新增「图注必须在翻页之后、署名之前」「翻页必须紧接图像区」「有图页
+  必须有图注」「不得残留 figure 内的旧 figcaption」四项检查，防回退到
+  v013 的「图注夹在图片与翻页之间」；
+- #23 图→翻页间距 8–16px 口径不变（.reader margin 仍为 12px，位置未动）；
+- 其余 21 项门槛全部保留，不放宽任何一项。
+
 v013 变化（Brief v013「翻页导航贴图」）：
 - 新增 #21 单话页 DOM 次序：完整图 → 翻页导航 → 来源与署名，全量 218 页；
   翻页恰好一套（不重复）、aria-label="漫画翻页"、无 href="#" 占位链接、
@@ -779,8 +787,9 @@ def check_14(skip_rebuild: bool, node: str | None) -> None:
 
 # ══════════════════════════════════════════════════════════════════════════
 #  15. 每话「来源与署名」区完整（Brief v010 §3A）
-#      注：v013 起翻页导航插入图与署名之间；署名仍在图片下方（经翻页），
-#      本项「署名区不在图片下方」断言语义不变，次序细项由 #21 专查。
+#      注：v013 起翻页导航插入图与署名之间，2026-11-11 起图注也下移到翻页
+#      之后；署名仍在图片下方，本项「署名区不在图片下方」断言语义不变，
+#      次序细项由 #21 专查。
 # ══════════════════════════════════════════════════════════════════════════
 def check_15(comics) -> None:
     problems = []
@@ -1211,8 +1220,8 @@ def check_20(comics, series) -> None:
 
 
 # ══════════════════════════════════════════════════════════════════════════
-# 21. 单话页 DOM 次序：完整图 → 翻页导航 → 来源与署名（Brief v013 §1/§4）
-#     全量 218 页逐一实测，不抽样。
+# 21. 单话页 DOM 次序：完整图 → 翻页导航 → 图注 → 来源与署名
+#     （Brief v013 §1/§4 + 2026-11-11 图注下移裁定）；全量 218 页逐一实测，不抽样。
 # ══════════════════════════════════════════════════════════════════════════
 def check_21(comics) -> None:
     problems = []
@@ -1227,11 +1236,13 @@ def check_21(comics) -> None:
         if n_pager != 1:
             problems.append(f"{c['item_id']} 翻页导航数量={n_pager}（应恰好 1 套）")
             continue
-        # 21b DOM 次序：图像区（完整图或占位）< 翻页 < 署名
+        # 21b DOM 次序：图像区（完整图或占位）< 翻页 < 图注 < 署名
+        #     2026-11-11 追加：图注不再夹在图片与翻页之间，整行下移到翻页之后
         pos_img = txt.find('<figure class="reader"')
         pos_ph = txt.find('class="placeholder"')
         pos_reader = max(pos_img, pos_ph)
         pos_pager = txt.find('<nav class="pager"')
+        pos_caption = txt.find('<p class="result-count reader-caption"')
         pos_attr = txt.find('<section class="attribution"')
         if pos_reader < 0:
             problems.append(f"{c['item_id']} 缺少图像区（完整图或占位）")
@@ -1242,6 +1253,15 @@ def check_21(comics) -> None:
         if not (pos_reader < pos_pager < pos_attr):
             problems.append(f"{c['item_id']} DOM 次序不是 图→翻页→署名")
             continue
+        pos_img_tag = txt.find('<img', pos_reader)
+        if pos_img_tag < 0 or pos_img_tag > pos_pager:
+            problems.append(f"{c['item_id']} 翻页导航未紧接漫画图片")
+        if pos_img >= 0 and pos_caption < 0:
+            problems.append(f"{c['item_id']} 有完整图但缺少下移后的图注")
+        if pos_caption >= 0 and not (pos_pager < pos_caption < pos_attr):
+            problems.append(f"{c['item_id']} 图注未下移到翻页之后（次序回退为 v013）")
+        if '<figcaption' in txt:
+            problems.append(f"{c['item_id']} 仍残留 figure 内的旧图注结构")
         # 21c 无障碍标签与占位链接
         if 'aria-label="漫画翻页"' not in txt:
             problems.append(f"{c['item_id']} 翻页导航缺少 aria-label=\"漫画翻页\"")
@@ -1261,8 +1281,9 @@ def check_21(comics) -> None:
         if not problems or all(c["item_id"] not in p for p in problems):
             n_ok += 1
 
-    add("21", "单话页 DOM 次序：完整图 → 翻页 → 来源与署名", not problems,
-        f"全量 {len(comics)} 页逐一实测：图像→翻页→署名次序 {n_ok} 页通过；"
+    add("21", "单话页 DOM 次序：完整图 → 翻页 → 图注 → 来源与署名", not problems,
+        f"全量 {len(comics)} 页逐一实测：图像→翻页→图注→署名次序 {n_ok} 页通过；"
+        f"图注已下移、翻页紧接图片、无旧 figcaption 残留；"
         f"翻页恰好一套、aria-label 在场、无 href=\"#\"、边界禁用侧为 span"
         + (f"；问题：{problems[:5]}" if problems else "，零违例"))
 
