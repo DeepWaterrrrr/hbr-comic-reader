@@ -27,7 +27,7 @@
   {
    "category": "official_comic",
    "description": "《炽焰天穹》(Heaven Burns Red) 官方四格漫画，权利人为 WFS / Key / 官方运营账号",
-   "count": 212,
+   "count": 217,
    "license_source": "用户授权声明（Brief v010 §1 / §3.4）",
    "evidence": "用户在 Stage Brief v010 中明确声明「已经取得 HBR 漫画公开发布授权，希望所有 HBR 玩家能够直接在线阅读完整图片」；无书面许可材料，如实记 user_declared",
    "usage_scope": [
@@ -78,5 +78,5 @@
   }
  ],
  "series_count": 6,
- "total_items": 213
+ "total_items": 218
 }

@@ -38,7 +38,7 @@ v012 变化（Brief v012「三导航 / 关于页 / 去系列块级标题」）�
     site/search.html                搜索（客户端）
     site/series.html                系列列表（兼容保留，不在导航）
     site/series/<slug>/index.html   系列详情（6 页，兼容保留，不在导航）
-    site/comic/<id>/index.html      单话页（213 页，静态预渲染）
+    site/comic/<id>/index.html      单话页（218 页，静态预渲染）
     site/404.html
     site/data/*.json                紧凑版目录数据（构建时从 data/ 复制）
     site/assets/comics/<id>.<ext>   完整阅读图（由 build_media.py 导出后复制）
@@ -48,7 +48,7 @@ v012 变化（Brief v012「三导航 / 关于页 / 去系列块级标题」）�
 设计口径：
 - **全部相对路径**，GitHub Pages 任意子路径可用；
 - 首页/单话页/系列页/关于页静态预渲染 → 固定 URL + 无 JS 也可读核心内容；
-- 搜索客户端渲染 → 213 条轻量 JSON，避免重复构建；
+- 搜索客户端渲染 → 218 条轻量 JSON，避免重复构建；
 - 所有来源文字与 HTML 属性一律经 esc() 转义。
 """
 

@@ -14920,12 +14920,322 @@
   "exception": null,
   "reading_index": 213,
   "prev_id": "CM_0170",
-  "next_id": null,
+  "next_id": "CM_0218",
   "gallery_order": 213,
   "image": "assets/comics/CM_0171.jpg",
   "thumb": "assets/comics/thumbs/CM_0171.jpg",
   "image_width": 1748,
   "image_height": 2480,
+  "thumb_width": 480,
+  "thumb_height": 681
+ },
+ {
+  "item_id": "CM_0218",
+  "title": "联动特别篇①「Signs of a Collab」",
+  "date": "2026-10-09",
+  "series": null,
+  "series_order": null,
+  "series_confidence": "none",
+  "canonical_source": "dynamic",
+  "canonical_official": true,
+  "canonical_width": 1376,
+  "canonical_height": 2048,
+  "canonical_media_id": "DYN_1257143801679446022_p01",
+  "sources": [
+   {
+    "key": "dynamic:1257143801679446022",
+    "type": "dynamic",
+    "type_label": "动态",
+    "id": "1257143801679446022",
+    "url": "https://www.bilibili.com/opus/1257143801679446022",
+    "date": "2026-10-09",
+    "official": true,
+    "status": "unverified",
+    "status_detail": null,
+    "raw_title": "《炽焰天穹》官方四格漫画 联动特别篇①「Signs of a Collab」",
+    "note": "P5R（女神异闻录5 皇家版）联动特别篇①；官方动态正文署名「漫画：津留崎 优」；完整原图取自 x/polymer/web-dynamic/v1/opus/detail 正文 para_type=2，非 16:9 裁切/缩略图。"
+   }
+  ],
+  "attribution": {
+   "work": {
+    "title": "炽焰天穹（Heaven Burns Red，民间亦译「绯染天空 / 红烧天堂」）",
+    "type": "官方四格漫画",
+    "rights_holders": "WFS / Key 及官方运营账号",
+    "rights_note": "权利方信息依据官方发布账号的认证信息与公开发布渠道整理；本项目为非官方爱好者整理站，与权利方无从属关系。"
+   },
+   "official_account": {
+    "name": "炽焰天穹_HBR",
+    "mid": "3546599741458758",
+    "url": "https://space.bilibili.com/3546599741458758",
+    "verified": true,
+    "evidence": "B站动态接口 MODULE_TYPE_AUTHOR 实测：official_verify.type=1（官方账号认证），2026-10-16 核实"
+   },
+   "artist": {
+    "name": "津留崎 优",
+    "status": "official_credit",
+    "evidence": "官方动态 1257143801679446022 正文「漫画：津留崎 优」（P5R 联动特别篇，2026-11-11 核实）"
+   },
+   "translator": null,
+   "version": "official",
+   "version_note": "官方简体原版（官方账号发布）"
+  },
+  "exception": null,
+  "reading_index": 214,
+  "prev_id": "CM_0171",
+  "next_id": "CM_0219",
+  "gallery_order": 214,
+  "image": "assets/comics/CM_0218.jpg",
+  "thumb": "assets/comics/thumbs/CM_0218.jpg",
+  "image_width": 1376,
+  "image_height": 2048,
+  "thumb_width": 480,
+  "thumb_height": 714
+ },
+ {
+  "item_id": "CM_0219",
+  "title": "联动特别篇②「意外地挺嗨」",
+  "date": "2026-10-13",
+  "series": null,
+  "series_order": null,
+  "series_confidence": "none",
+  "canonical_source": "dynamic",
+  "canonical_official": true,
+  "canonical_width": 1444,
+  "canonical_height": 2048,
+  "canonical_media_id": "DYN_1258628142354923527_p01",
+  "sources": [
+   {
+    "key": "dynamic:1258628142354923527",
+    "type": "dynamic",
+    "type_label": "动态",
+    "id": "1258628142354923527",
+    "url": "https://www.bilibili.com/opus/1258628142354923527",
+    "date": "2026-10-13",
+    "official": true,
+    "status": "unverified",
+    "status_detail": null,
+    "raw_title": "《炽焰天穹》官方四格漫画 联动特别篇②「意外地挺嗨」",
+    "note": "P5R（女神异闻录5 皇家版）联动特别篇②；官方动态正文署名「漫画：津留崎 优」；完整原图取自 x/polymer/web-dynamic/v1/opus/detail 正文 para_type=2，非 16:9 裁切/缩略图。"
+   }
+  ],
+  "attribution": {
+   "work": {
+    "title": "炽焰天穹（Heaven Burns Red，民间亦译「绯染天空 / 红烧天堂」）",
+    "type": "官方四格漫画",
+    "rights_holders": "WFS / Key 及官方运营账号",
+    "rights_note": "权利方信息依据官方发布账号的认证信息与公开发布渠道整理；本项目为非官方爱好者整理站，与权利方无从属关系。"
+   },
+   "official_account": {
+    "name": "炽焰天穹_HBR",
+    "mid": "3546599741458758",
+    "url": "https://space.bilibili.com/3546599741458758",
+    "verified": true,
+    "evidence": "B站动态接口 MODULE_TYPE_AUTHOR 实测：official_verify.type=1（官方账号认证），2026-10-16 核实"
+   },
+   "artist": {
+    "name": "津留崎 优",
+    "status": "official_credit",
+    "evidence": "官方动态 1258628142354923527 正文「漫画：津留崎 优」（P5R 联动特别篇，2026-11-11 核实）"
+   },
+   "translator": null,
+   "version": "official",
+   "version_note": "官方简体原版（官方账号发布）"
+  },
+  "exception": null,
+  "reading_index": 215,
+  "prev_id": "CM_0218",
+  "next_id": "CM_0220",
+  "gallery_order": 215,
+  "image": "assets/comics/CM_0219.jpg",
+  "thumb": "assets/comics/thumbs/CM_0219.jpg",
+  "image_width": 1444,
+  "image_height": 2048,
+  "thumb_width": 480,
+  "thumb_height": 681
+ },
+ {
+  "item_id": "CM_0220",
+  "title": "联动特别篇③「店名为Untouchable」",
+  "date": "2026-10-15",
+  "series": null,
+  "series_order": null,
+  "series_confidence": "none",
+  "canonical_source": "dynamic",
+  "canonical_official": true,
+  "canonical_width": 1344,
+  "canonical_height": 1907,
+  "canonical_media_id": "DYN_1259370312739323911_p01",
+  "sources": [
+   {
+    "key": "dynamic:1259370312739323911",
+    "type": "dynamic",
+    "type_label": "动态",
+    "id": "1259370312739323911",
+    "url": "https://www.bilibili.com/opus/1259370312739323911",
+    "date": "2026-10-15",
+    "official": true,
+    "status": "unverified",
+    "status_detail": null,
+    "raw_title": "《炽焰天穹》官方四格漫画 联动特别篇③「店名为Untouchable」",
+    "note": "P5R（女神异闻录5 皇家版）联动特别篇③；官方动态正文署名「漫画：津留崎 优」；完整原图取自 x/polymer/web-dynamic/v1/opus/detail 正文 para_type=2，非 16:9 裁切/缩略图。"
+   }
+  ],
+  "attribution": {
+   "work": {
+    "title": "炽焰天穹（Heaven Burns Red，民间亦译「绯染天空 / 红烧天堂」）",
+    "type": "官方四格漫画",
+    "rights_holders": "WFS / Key 及官方运营账号",
+    "rights_note": "权利方信息依据官方发布账号的认证信息与公开发布渠道整理；本项目为非官方爱好者整理站，与权利方无从属关系。"
+   },
+   "official_account": {
+    "name": "炽焰天穹_HBR",
+    "mid": "3546599741458758",
+    "url": "https://space.bilibili.com/3546599741458758",
+    "verified": true,
+    "evidence": "B站动态接口 MODULE_TYPE_AUTHOR 实测：official_verify.type=1（官方账号认证），2026-10-16 核实"
+   },
+   "artist": {
+    "name": "津留崎 优",
+    "status": "official_credit",
+    "evidence": "官方动态 1259370312739323911 正文「漫画：津留崎 优」（P5R 联动特别篇，2026-11-11 核实）"
+   },
+   "translator": null,
+   "version": "official",
+   "version_note": "官方简体原版（官方账号发布）"
+  },
+  "exception": null,
+  "reading_index": 216,
+  "prev_id": "CM_0219",
+  "next_id": "CM_0221",
+  "gallery_order": 216,
+  "image": "assets/comics/CM_0220.jpg",
+  "thumb": "assets/comics/thumbs/CM_0220.jpg",
+  "image_width": 1344,
+  "image_height": 1907,
+  "thumb_width": 480,
+  "thumb_height": 681
+ },
+ {
+  "item_id": "CM_0221",
+  "title": "联动特别篇④「欢迎来到小玉房间」",
+  "date": "2026-10-17",
+  "series": null,
+  "series_order": null,
+  "series_confidence": "none",
+  "canonical_source": "dynamic",
+  "canonical_official": true,
+  "canonical_width": 1444,
+  "canonical_height": 2048,
+  "canonical_media_id": "DYN_1260112483080732680_p01",
+  "sources": [
+   {
+    "key": "dynamic:1260112483080732680",
+    "type": "dynamic",
+    "type_label": "动态",
+    "id": "1260112483080732680",
+    "url": "https://www.bilibili.com/opus/1260112483080732680",
+    "date": "2026-10-17",
+    "official": true,
+    "status": "unverified",
+    "status_detail": null,
+    "raw_title": "《炽焰天穹》官方四格漫画 联动特别篇④「欢迎来到小玉房间」",
+    "note": "P5R（女神异闻录5 皇家版）联动特别篇④；官方动态正文署名「漫画：津留崎 优」；完整原图取自 x/polymer/web-dynamic/v1/opus/detail 正文 para_type=2，非 16:9 裁切/缩略图。"
+   }
+  ],
+  "attribution": {
+   "work": {
+    "title": "炽焰天穹（Heaven Burns Red，民间亦译「绯染天空 / 红烧天堂」）",
+    "type": "官方四格漫画",
+    "rights_holders": "WFS / Key 及官方运营账号",
+    "rights_note": "权利方信息依据官方发布账号的认证信息与公开发布渠道整理；本项目为非官方爱好者整理站，与权利方无从属关系。"
+   },
+   "official_account": {
+    "name": "炽焰天穹_HBR",
+    "mid": "3546599741458758",
+    "url": "https://space.bilibili.com/3546599741458758",
+    "verified": true,
+    "evidence": "B站动态接口 MODULE_TYPE_AUTHOR 实测：official_verify.type=1（官方账号认证），2026-10-16 核实"
+   },
+   "artist": {
+    "name": "津留崎 优",
+    "status": "official_credit",
+    "evidence": "官方动态 1260112483080732680 正文「漫画：津留崎 优」（P5R 联动特别篇，2026-11-11 核实）"
+   },
+   "translator": null,
+   "version": "official",
+   "version_note": "官方简体原版（官方账号发布）"
+  },
+  "exception": null,
+  "reading_index": 217,
+  "prev_id": "CM_0220",
+  "next_id": "CM_0222",
+  "gallery_order": 217,
+  "image": "assets/comics/CM_0221.jpg",
+  "thumb": "assets/comics/thumbs/CM_0221.jpg",
+  "image_width": 1444,
+  "image_height": 2048,
+  "thumb_width": 480,
+  "thumb_height": 681
+ },
+ {
+  "item_id": "CM_0222",
+  "title": "联动特别篇⑤「为所欲为」",
+  "date": "2026-10-18",
+  "series": null,
+  "series_order": null,
+  "series_confidence": "none",
+  "canonical_source": "dynamic",
+  "canonical_official": true,
+  "canonical_width": 1444,
+  "canonical_height": 2048,
+  "canonical_media_id": "DYN_1260483568256155653_p01",
+  "sources": [
+   {
+    "key": "dynamic:1260483568256155653",
+    "type": "dynamic",
+    "type_label": "动态",
+    "id": "1260483568256155653",
+    "url": "https://www.bilibili.com/opus/1260483568256155653",
+    "date": "2026-10-18",
+    "official": true,
+    "status": "unverified",
+    "status_detail": null,
+    "raw_title": "《炽焰天穹》官方四格漫画 联动特别篇⑤「为所欲为」",
+    "note": "P5R（女神异闻录5 皇家版）联动特别篇⑤；官方动态正文署名「漫画：津留崎 优」；完整原图取自 x/polymer/web-dynamic/v1/opus/detail 正文 para_type=2，非 16:9 裁切/缩略图。"
+   }
+  ],
+  "attribution": {
+   "work": {
+    "title": "炽焰天穹（Heaven Burns Red，民间亦译「绯染天空 / 红烧天堂」）",
+    "type": "官方四格漫画",
+    "rights_holders": "WFS / Key 及官方运营账号",
+    "rights_note": "权利方信息依据官方发布账号的认证信息与公开发布渠道整理；本项目为非官方爱好者整理站，与权利方无从属关系。"
+   },
+   "official_account": {
+    "name": "炽焰天穹_HBR",
+    "mid": "3546599741458758",
+    "url": "https://space.bilibili.com/3546599741458758",
+    "verified": true,
+    "evidence": "B站动态接口 MODULE_TYPE_AUTHOR 实测：official_verify.type=1（官方账号认证），2026-10-16 核实"
+   },
+   "artist": {
+    "name": "津留崎 优",
+    "status": "official_credit",
+    "evidence": "官方动态 1260483568256155653 正文「漫画：津留崎 优」（P5R 联动特别篇，2026-11-11 核实）"
+   },
+   "translator": null,
+   "version": "official",
+   "version_note": "官方简体原版（官方账号发布）"
+  },
+  "exception": null,
+  "reading_index": 218,
+  "prev_id": "CM_0221",
+  "next_id": null,
+  "gallery_order": 218,
+  "image": "assets/comics/CM_0222.jpg",
+  "thumb": "assets/comics/thumbs/CM_0222.jpg",
+  "image_width": 1444,
+  "image_height": 2048,
   "thumb_width": 480,
   "thumb_height": 681
  }
